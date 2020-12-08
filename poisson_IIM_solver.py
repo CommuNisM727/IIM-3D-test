@@ -482,7 +482,7 @@ class poisson_IIM_solver(object):
         
         return [phi_xx, phi_xy, phi_xz, phi_yx, phi_yy, phi_yz, phi_zx, phi_zy, phi_zz]
 
-mesh = mesh_uniform(multiplier=1)
+mesh = mesh_uniform(multiplier=2)
 inte = interface_ellipsoid(0.6, 0.5, 0.4, mesh)
 a = poisson_scc(inte, mesh)
 scc = poisson_IIM_solver(a)

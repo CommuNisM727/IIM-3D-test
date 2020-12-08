@@ -379,5 +379,6 @@ SUBROUTINE TRID(MR, A, B, C, Y, D)
 ! FEBRUARY  1985    DOCUMENTATION UPGRADE
 ! NOVEMBER  1988    VERSION 3.2, FORTRAN 77 CHANGES
 ! June      2004    Version 5.0, Fortran 90 Changes
+! DECEMBER  2020    ALL UNNECESSARY UTILS FOR 3D HELMHOLTZ REMOVED --727 
 !-----------------------------------------------------------------------
 END SUBROUTINE TRID

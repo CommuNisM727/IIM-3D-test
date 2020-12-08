@@ -1,0 +1,2 @@
+Compile the required 3 fortran source with f2py module built in the numpy
+f2py -c -m helmholtz3D hw3crt.f90 pois3d.f90 fftpack.f90 --fcompiler=gnu95 --compiler=mingw32
