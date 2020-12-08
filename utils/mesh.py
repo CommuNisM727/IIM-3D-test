@@ -1,12 +1,12 @@
 ### ALL REQUIRED PYTHON MODULES.
 import numpy as np
 ###-----------------------------------------------------------------------------------
-### FILE NAME:    mesh.py
-### CREATE DATE:  DEC. 2020.
-### AUTHOR:       Yuan-Tian (CommuNisM727)
+### FILE NAME:      mesh.py
+### CREATE DATE:    DEC. 2020.
+### AUTHOR:         Yuan-Tian (CommuNisM727)
 ###-----------------------------------------------------------------------------------
-### DESCRIPTION:  A simple uniform mesh generator.
-### NOTED:        Different types of mesh may be added.
+### DESCRIPTION:    A simple uniform mesh generator.
+### NOTED:          Different types of mesh may be added.
 ###-----------------------------------------------------------------------------------
 
 

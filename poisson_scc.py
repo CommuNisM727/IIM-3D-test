@@ -3,13 +3,13 @@ import numpy as np
 from utils.mesh import *
 from utils.interface import *
 ###-----------------------------------------------------------------------------------
-### FILE NAME:    poisson_scc.py
-### CREATE DATE:  DEC. 2020.
-### AUTHOR:       Yuan-Tian (CommuNisM727)
+### FILE NAME:      poisson_scc.py
+### CREATE DATE:    DEC. 2020.
+### AUTHOR:         Yuan-Tian (CommuNisM727)
 ###-----------------------------------------------------------------------------------
-### DESCRIPTION:  A simple 3D poisson equation test case for 3D IIM solver.
-### NOTED:        A few more simply-constructed test case may be added later,
-###               and this file itself may be renamed.
+### DESCRIPTION:    A simple 3D poisson equation test case for 3D IIM solver.
+### NOTED:          A few more simply-constructed test case may be added later,
+###                 and this file itself may be renamed.
 ###-----------------------------------------------------------------------------------
 
 

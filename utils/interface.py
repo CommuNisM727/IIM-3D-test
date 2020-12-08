@@ -1,11 +1,21 @@
+### ALL REQUIRED PYTHON MODULES.
 import numpy as np
-
 """ DEBUG
 from mesh import *
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm
 """
+###-----------------------------------------------------------------------------------
+### FILE NAME:      interface.py
+### CREATE DATE:    DEC. 2020.
+### AUTHOR:         Yuan-Tian (CommuNisM727)
+###-----------------------------------------------------------------------------------
+### DESCRIPTION:    Indicating the interface through level-set function \phi.
+### NOTED:          A simple ellipsoid interface and its inaccurate level-set 
+###                 function is given.
+###                 More interface may be added later.
+###-----------------------------------------------------------------------------------
 
 class interface_ellipsoid(object):
     def __init__(self, a, b, c, mesh):
