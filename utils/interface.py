@@ -17,8 +17,34 @@ from matplotlib import cm
 ###                 More interface may be added later.
 ###-----------------------------------------------------------------------------------
 
+
 class interface_ellipsoid(object):
+    """ A simple ellipsoid interface (x^2/a^2 + y^2/b^2 + z^2/c^2 = 1).
+
+    Attributes:
+        a, b, c     (real):             Elliptic radius along x, y, z.
+        irr         (3D-array):         Indices of irregular mesh points [1, n_irr].
+        n_irr       (integer):          Number of irregular mesh points.
+        phi         (3D-array):         Level-set function \phi computed on mesh points.
+        phi_        (3D-array):         1st-order derivatives of \phi. 
+        phi__       (3D-array):         2nd-order derivatives of \phi.
+
+    """
     def __init__(self, a, b, c, mesh):
+        """ Initialization of class 'interface_ellipsoid'
+            Irrgular mesh points 'irr' and 'n_irr' are computed.
+            Level-set function '\phi' and its derivatives '\phi_' are computed.
+
+        Args:
+            a, b, c     (real):             Elliptic radius along eigen-direction x, y, z.
+            mesh        (mesh_uniform):     An uniform mesh in 3D cartesian coordinates 
+                                            indicating the computational area.
+
+        Returns:
+            None
+
+        """
+
         self.a = a
         self.b = b
         self.c = c
@@ -41,12 +67,13 @@ class interface_ellipsoid(object):
         self.phi_zy = np.zeros((mesh.n_x + 1, mesh.n_y + 1, mesh.n_z + 1), dtype=np.float64)
         self.phi_zz = np.zeros((mesh.n_x + 1, mesh.n_y + 1, mesh.n_z + 1), dtype=np.float64)
         
+        # STEP 1:  Find the value of level-set function \phi on all mesh points.
         for i in range(mesh.n_x + 1):
             for j in range(mesh.n_y + 1):
                 for k in range(mesh.n_z + 1):
                     self.phi[i, j, k] = self.__phi(mesh.xs[i], mesh.ys[j], mesh.zs[k])
 
-        # Irregular points are sought AFTER phi is calculated.
+        # STEP 2:  Find the derivatives of \phi and map irregular points to a index.
         self.n_irr = 0
         for i in range(mesh.n_x + 1):
             for j in range(mesh.n_y + 1):
@@ -56,7 +83,7 @@ class interface_ellipsoid(object):
                         k == 0 or k == mesh.n_z):
                         continue
 
-                    # Irregular points.
+                    # Irregular points must be sought AFTER \phi is calculated.
                     if (self.phi[i, j, k] == 0.0):
                         self.irr[i, j, k] = 1
                     else:
@@ -75,7 +102,7 @@ class interface_ellipsoid(object):
                         self.n_irr = self.n_irr + 1
                         self.irr[i, j, k] = self.n_irr
 
-                    # Derivatives.
+                    # Derivatives of \phi.
                     self.phi_x[i, j, k] = self.__phi_x(i, j, k, mesh.h_x)
                     self.phi_y[i, j, k] = self.__phi_y(i, j, k, mesh.h_y)
                     self.phi_z[i, j, k] = self.__phi_z(i, j, k, mesh.h_z)
@@ -92,18 +119,39 @@ class interface_ellipsoid(object):
                     self.phi_zy[i, j, k] = self.__phi_zy(i, j, k, mesh.h_y, mesh.h_z)
                     self.phi_zz[i, j, k] = self.__phi_zz(i, j, k, mesh.h_z)
 
-    # Level set function (INACCURATE, iterative method for SDF can be used instead).
+
     def __phi(self, x, y, z):
+        """ Level-set function \phi on one point are computed.
+            This implementation is an INACCURATE one based on the analytical equation of 
+            ellipsoid, more accurate result can be obtained if a Signed-Distance-Function
+            is calculated through iterative methods or so.
+
+        Args:
+            x, y, z     (real):     A Triplet indicating the point (x, y, z).
+
+        Returns:
+            \phi(x, y, z) = x^2/a^2 + y^2/b^2 + z^2/c^2 - 1.
+        """
         return x**2 / self.a**2 + y**2 / self.b**2 + z**2 / self.c**2 - 1.0
 
-    # Level set function derivatives (public). 
+    """ All derivatives (central difference) of level-set function \phi on one 
+        point are computed, private method called by the initialization function.
+
+    Args:
+        i, j, k         (integer):      A Triplet indicating the point (x_i, y_j, z_k).
+        h_x, h_y, h_z   (real):         Distance between points along x, y, z axis.
+
+    Returns:
+        Central difference approximation of all derivatives of \phi.
+    """
+    # 1st-order.
     def __phi_x(self, i, j, k, h_x):
         return (self.phi[i + 1, j, k] - self.phi[i - 1, j, k]) / (2.0 * h_x)
     def __phi_y(self, i, j, k, h_y):
         return (self.phi[i, j + 1, k] - self.phi[i, j - 1, k]) / (2.0 * h_y)
     def __phi_z(self, i, j, k, h_z):
         return (self.phi[i, j, k + 1] - self.phi[i, j, k - 1]) / (2.0 * h_z)
-    # 2nd-order derivatives.
+    # 2nd-order.
     def __phi_xx(self, i, j, k, h_x):
         return (self.phi[i + 1, j, k] + self.phi[i - 1, j, k] - 2.0 * self.phi[i, j, k]) / (h_x * h_x)
     def __phi_xy(self, i, j, k, h_x, h_y):
@@ -124,38 +172,9 @@ class interface_ellipsoid(object):
         return (self.phi[i, j - 1, k - 1] + self.phi[i, j + 1, k + 1] - self.phi[i, j - 1, k + 1] - self.phi[i, j + 1, k - 1]) / (4.0 * h_y * h_z)
     def __phi_zz(self, i, j, k, h_z):
         return (self.phi[i, j, k + 1] + self.phi[i, j, k - 1] - 2.0 * self.phi[i, j, k]) / (h_z * h_z)
-    
-    # Level set function derivatives (public). 
-    def phi_x_(self, i, j, k, h_x):
-        return (self.phi[i + 1, j, k] - self.phi[i - 1, j, k]) / (2.0 * h_x)
-    def phi_y_(self, i, j, k, h_y):
-        return (self.phi[i, j + 1, k] - self.phi[i, j - 1, k]) / (2.0 * h_y)
-    def phi_z_(self, i, j, k, h_z):
-        return (self.phi[i, j, k + 1] - self.phi[i, j, k - 1]) / (2.0 * h_z)
-    # 2nd-order derivatives.
-    def phi_xx_(self, i, j, k, h_x):
-        return (self.phi[i + 1, j, k] + self.phi[i - 1, j, k] - 2.0 * self.phi[i, j, k]) / (h_x * h_x)
-    def phi_xy_(self, i, j, k, h_x, h_y):
-        return (self.phi[i - 1, j - 1, k] + self.phi[i + 1, j + 1, k] - self.phi[i - 1, j + 1, k] - self.phi[i + 1, j - 1, k]) / (4.0 * h_x * h_y)
-    def phi_xz_(self, i, j, k, h_x, h_z):
-        return (self.phi[i - 1, j, k - 1] + self.phi[i + 1, j, k + 1] - self.phi[i - 1, j, k + 1] - self.phi[i + 1, j, k - 1]) / (4.0 * h_x * h_z)
-    
-    def phi_yx_(self, i, j, k, h_x, h_y):
-        return (self.phi[i - 1, j - 1, k] + self.phi[i + 1, j + 1, k] - self.phi[i - 1, j + 1, k] - self.phi[i + 1, j - 1, k]) / (4.0 * h_x * h_y)
-    def phi_yy_(self, i, j, k, h_y):
-        return (self.phi[i, j + 1, k] + self.phi[i, j - 1, k] - 2.0 * self.phi[i, j, k]) / (h_y * h_y)
-    def phi_yz_(self, i, j, k, h_y, h_z):
-        return (self.phi[i, j - 1, k - 1] + self.phi[i, j + 1, k + 1] - self.phi[i, j - 1, k + 1] - self.phi[i, j + 1, k - 1]) / (4.0 * h_y * h_z)
-    
-    def phi_zx_(self, i, j, k, h_x, h_z):
-        return (self.phi[i - 1, j, k - 1] + self.phi[i + 1, j, k + 1] - self.phi[i - 1, j, k + 1] - self.phi[i + 1, j, k - 1]) / (4.0 * h_x * h_z)
-    def phi_zy_(self, i, j, k, h_y, h_z):
-        return (self.phi[i, j - 1, k - 1] + self.phi[i, j + 1, k + 1] - self.phi[i, j - 1, k + 1] - self.phi[i, j + 1, k - 1]) / (4.0 * h_y * h_z)
-    def phi_zz_(self, i, j, k, h_z):
-        return (self.phi[i, j, k + 1] + self.phi[i, j, k - 1] - 2.0 * self.phi[i, j, k]) / (h_z * h_z)
-    
-    
-""" DEBUG
+
+
+""" MODULE TESTS
 mesh = mesh_uniform(multiplier=2)
 inte = interface_ellipsoid(0.5, 0.5, 0.2, mesh)
 
@@ -175,3 +194,7 @@ for i in range(mesh.n_x):
 ax.scatter(x, y, z, linewidth=1)
 plt.show()
 """
+
+### MODIFY HISTORY---
+### 09.12.2020      FILE CREATED.           ---727
+###-----------------------------------------------------------------------

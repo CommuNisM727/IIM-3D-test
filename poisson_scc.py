@@ -59,8 +59,8 @@ class poisson_scc(object):
         i, j, k     (integer):      A Triplet indicating the point (x_i, y_j, z_k).
 
     Returns:
-        u(x, y, z) = cos(x)*sin(y)*sin(z) if outsides the interface, 0 otherwise.  
-        f(x, y, z) = -3*cos(x)*sin(y)*sin(z) if outsides the interface, 0 otherwise.
+        u(x_i, y_j, z_k) = cos(x_i)*sin(y_j)*sin(z_k) if outsides the interface, 0 otherwise.  
+        f(x_i, y_j, z_k) = -3*cos(x_i)*sin(y_j)*sin(z_k) if outsides the interface, 0 otherwise.
     """
     def __u_exact(self, i, j, k):
         if (self.interface.phi[i, j, k] >= 0):
