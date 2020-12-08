@@ -29,6 +29,7 @@ class poisson_IIM_solver(object):
         self.u = np.asfortranarray(np.zeros(shape=(self.pde.mesh.n_x + 1, self.pde.mesh.n_y + 1, self.pde.mesh.n_z + 1), dtype=np.float64, order='F'))
         self.error = 0.0
 
+
         self.__irregular_projection()
         self.__solve()
         self.__error_estimate()
