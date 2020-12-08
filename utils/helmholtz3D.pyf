@@ -1,0 +1,428 @@
+!    -*- f90 -*-
+! Note: the context of this file is case sensitive.
+
+python module helmholtz3D ! in 
+    interface  ! in :helmholtz3D
+        subroutine hw3crtt(xs,xf,l,lbdcnd,bdxs,bdxf,ys,yf,m,mbdcnd,bdys,bdyf,zs,zf,n,nbdcnd,bdzs,bdzf,elmbda,ldimf,mdimf,f,pertrb,ierror,w) ! in :helmholtz3D:hw3crt.f90
+            real*8 intent(in) :: xs
+            real*8 intent(in) :: xf
+            integer intent(in) :: l
+            integer :: lbdcnd
+            real*8 dimension(mdimf,*),intent(in) :: bdxs
+            real*8 dimension(mdimf,*),intent(in),depend(mdimf) :: bdxf
+            real*8 intent(in) :: ys
+            real*8 intent(in) :: yf
+            integer intent(in) :: m
+            integer :: mbdcnd
+            real*8 dimension(ldimf,*),intent(in) :: bdys
+            real*8 dimension(ldimf,*),intent(in),depend(ldimf) :: bdyf
+            real*8 intent(in) :: zs
+            real*8 intent(in) :: zf
+            integer intent(in) :: n
+            integer intent(in) :: nbdcnd
+            real*8 dimension(ldimf,*),intent(in),depend(ldimf) :: bdzs
+            real*8 dimension(ldimf,*),intent(in),depend(ldimf) :: bdzf
+            real*8 intent(in) :: elmbda
+            integer, optional,check(shape(bdys,0)==ldimf),depend(bdys) :: ldimf=shape(bdys,0)
+            integer, optional,check(shape(bdxs,0)==mdimf),depend(bdxs) :: mdimf=shape(bdxs,0)
+            real*8 dimension(ldimf,mdimf,*),depend(ldimf,mdimf) :: f
+            real*8 intent(out) :: pertrb
+            integer intent(out) :: ierror
+            real*8 dimension(*) :: w
+        end subroutine hw3crtt
+        subroutine pois3dd(lperod,l,c1,mperod,m,c2,nperod,n,a,b,c,ldimf,mdimf,f,ierror,w) ! in :helmholtz3D:pois3d.f90
+            integer intent(in) :: lperod
+            integer :: l
+            real*8 :: c1
+            integer intent(in) :: mperod
+            integer :: m
+            real*8 :: c2
+            integer intent(in) :: nperod
+            integer :: n
+            real*8 dimension(*) :: a
+            real*8 dimension(*) :: b
+            real*8 dimension(*) :: c
+            integer, optional,check(shape(f,0)==ldimf),depend(f) :: ldimf=shape(f,0)
+            integer, optional,check(shape(f,1)==mdimf),depend(f) :: mdimf=shape(f,1)
+            real*8 dimension(ldimf,mdimf,*) :: f
+            integer :: ierror
+            real*8 dimension(*) :: w
+        end subroutine pois3dd
+        subroutine pos3d1(lp,l,mp,m,n,a,b,c,ldimf,mdimf,f,xrt,yrt,t,d,wx,wy,c1,c2,bb) ! in :helmholtz3D:pois3d.f90
+            integer intent(in) :: lp
+            integer intent(in) :: l
+            integer intent(in) :: mp
+            integer intent(in) :: m
+            integer intent(in) :: n
+            real*8 dimension(*) :: a
+            real*8 dimension(*),intent(in) :: b
+            real*8 dimension(*) :: c
+            integer, optional,intent(in),check(shape(f,0)==ldimf),depend(f) :: ldimf=shape(f,0)
+            integer, optional,intent(in),check(shape(f,1)==mdimf),depend(f) :: mdimf=shape(f,1)
+            real*8 dimension(ldimf,mdimf,1),intent(inout) :: f
+            real*8 dimension(*),intent(inout) :: xrt
+            real*8 dimension(*),intent(inout) :: yrt
+            real*8 dimension(*) :: t
+            real*8 dimension(*) :: d
+            real*8 dimension(*) :: wx
+            real*8 dimension(*) :: wy
+            real*8 intent(in) :: c1
+            real*8 intent(in) :: c2
+            real*8 dimension(*) :: bb
+        end subroutine pos3d1
+        subroutine trid(mr,a,b,c,y,d) ! in :helmholtz3D:pois3d.f90
+            integer intent(in) :: mr
+            real*8 dimension(*),intent(in) :: a
+            real*8 dimension(*),intent(in) :: b
+            real*8 dimension(*),intent(in) :: c
+            real*8 dimension(*),intent(inout) :: y
+            real*8 dimension(*),intent(inout) :: d
+        end subroutine trid
+        subroutine ezfftf(n,r,azero,a,b,wsave) ! in :helmholtz3D:fftpack.f90
+            integer :: n
+            real*8 dimension(*),intent(in) :: r
+            real*8 intent(out) :: azero
+            real*8 dimension(*),intent(out) :: a
+            real*8 dimension(*),intent(out) :: b
+            real*8 dimension(*) :: wsave
+        end subroutine ezfftf
+        subroutine ezfftb(n,r,azero,a,b,wsave) ! in :helmholtz3D:fftpack.f90
+            integer :: n
+            real*8 dimension(*) :: r
+            real*8 intent(in) :: azero
+            real*8 dimension(*),intent(in) :: a
+            real*8 dimension(*),intent(in) :: b
+            real*8 dimension(*) :: wsave
+        end subroutine ezfftb
+        subroutine ezffti(n,wsave) ! in :helmholtz3D:fftpack.f90
+            integer :: n
+            real*8 dimension(*) :: wsave
+        end subroutine ezffti
+        subroutine ezfft1(n,wa,ifac) ! in :helmholtz3D:fftpack.f90
+            integer intent(in) :: n
+            real*8 dimension(*),intent(inout) :: wa
+            integer dimension(*),intent(inout) :: ifac
+        end subroutine ezfft1
+        subroutine costi(n,wsave) ! in :helmholtz3D:fftpack.f90
+            integer intent(in) :: n
+            real*8 dimension(*) :: wsave
+        end subroutine costi
+        subroutine cost(n,x,wsave) ! in :helmholtz3D:fftpack.f90
+            integer intent(in) :: n
+            real*8 dimension(*) :: x
+            real*8 dimension(*) :: wsave
+        end subroutine cost
+        subroutine sinti(n,wsave) ! in :helmholtz3D:fftpack.f90
+            integer intent(in) :: n
+            real*8 dimension(*) :: wsave
+        end subroutine sinti
+        subroutine sint(n,x,wsave) ! in :helmholtz3D:fftpack.f90
+            integer :: n
+            real*8 dimension(*) :: x
+            real*8 dimension(*) :: wsave
+        end subroutine sint
+        subroutine sint1(n,war,was,xh,x,ifac) ! in :helmholtz3D:fftpack.f90
+            integer intent(in) :: n
+            real*8 dimension(*) :: war
+            real*8 dimension(*),intent(in) :: was
+            real*8 dimension(*) :: xh
+            real*8 dimension(*) :: x
+            integer dimension(*) :: ifac
+        end subroutine sint1
+        subroutine cosqi(n,wsave) ! in :helmholtz3D:fftpack.f90
+            integer :: n
+            real*8 dimension(*) :: wsave
+        end subroutine cosqi
+        subroutine cosqf(n,x,wsave) ! in :helmholtz3D:fftpack.f90
+            integer :: n
+            real*8 dimension(*) :: x
+            real*8 dimension(*) :: wsave
+        end subroutine cosqf
+        subroutine cosqf1(n,x,w,xh) ! in :helmholtz3D:fftpack.f90
+            integer :: n
+            real*8 dimension(*) :: x
+            real*8 dimension(*),intent(in) :: w
+            real*8 dimension(*) :: xh
+        end subroutine cosqf1
+        subroutine cosqb(n,x,wsave) ! in :helmholtz3D:fftpack.f90
+            integer :: n
+            real*8 dimension(*) :: x
+            real*8 dimension(*) :: wsave
+        end subroutine cosqb
+        subroutine cosqb1(n,x,w,xh) ! in :helmholtz3D:fftpack.f90
+            integer :: n
+            real*8 dimension(*) :: x
+            real*8 dimension(*),intent(in) :: w
+            real*8 dimension(*) :: xh
+        end subroutine cosqb1
+        subroutine sinqi(n,wsave) ! in :helmholtz3D:fftpack.f90
+            integer :: n
+            real*8 dimension(*) :: wsave
+        end subroutine sinqi
+        subroutine sinqf(n,x,wsave) ! in :helmholtz3D:fftpack.f90
+            integer :: n
+            real*8 dimension(*) :: x
+            real*8 dimension(*) :: wsave
+        end subroutine sinqf
+        subroutine sinqb(n,x,wsave) ! in :helmholtz3D:fftpack.f90
+            integer :: n
+            real*8 dimension(*) :: x
+            real*8 dimension(*) :: wsave
+        end subroutine sinqb
+        subroutine cffti(n,wsave) ! in :helmholtz3D:fftpack.f90
+            integer :: n
+            real*8 dimension(*) :: wsave
+        end subroutine cffti
+        subroutine cffti1(n,wa,ifac) ! in :helmholtz3D:fftpack.f90
+            integer intent(in) :: n
+            real*8 dimension(*),intent(inout) :: wa
+            integer dimension(*),intent(inout) :: ifac
+        end subroutine cffti1
+        subroutine cfftb(n,c,wsave) ! in :helmholtz3D:fftpack.f90
+            integer :: n
+            real*8 dimension(*) :: c
+            real*8 dimension(*) :: wsave
+        end subroutine cfftb
+        subroutine cfftb1(n,c,ch,wa,ifac) ! in :helmholtz3D:fftpack.f90
+            integer intent(in) :: n
+            real*8 dimension(*) :: c
+            real*8 dimension(*) :: ch
+            real*8 dimension(*) :: wa
+            integer dimension(*),intent(in) :: ifac
+        end subroutine cfftb1
+        subroutine passb2(ido,l1,cc,ch,wa1) ! in :helmholtz3D:fftpack.f90
+            integer, optional,intent(in),check(shape(cc,0)==ido),depend(cc) :: ido=shape(cc,0)
+            integer, optional,intent(in),check(shape(cc,2)==l1),depend(cc) :: l1=shape(cc,2)
+            real*8 dimension(ido,2,l1),intent(in) :: cc
+            real*8 dimension(ido,l1,2),intent(out),depend(ido,l1) :: ch
+            real*8 dimension(1),intent(in) :: wa1
+        end subroutine passb2
+        subroutine passb3(ido,l1,cc,ch,wa1,wa2) ! in :helmholtz3D:fftpack.f90
+            integer, optional,intent(in),check(shape(cc,0)==ido),depend(cc) :: ido=shape(cc,0)
+            integer, optional,intent(in),check(shape(cc,2)==l1),depend(cc) :: l1=shape(cc,2)
+            real*8 dimension(ido,3,l1),intent(in) :: cc
+            real*8 dimension(ido,l1,3),intent(out),depend(ido,l1) :: ch
+            real*8 dimension(*),intent(in) :: wa1
+            real*8 dimension(*),intent(in) :: wa2
+        end subroutine passb3
+        subroutine passb4(ido,l1,cc,ch,wa1,wa2,wa3) ! in :helmholtz3D:fftpack.f90
+            integer, optional,intent(in),check(shape(cc,0)==ido),depend(cc) :: ido=shape(cc,0)
+            integer, optional,intent(in),check(shape(cc,2)==l1),depend(cc) :: l1=shape(cc,2)
+            real*8 dimension(ido,4,l1),intent(in) :: cc
+            real*8 dimension(ido,l1,4),intent(out),depend(ido,l1) :: ch
+            real*8 dimension(*),intent(in) :: wa1
+            real*8 dimension(*),intent(in) :: wa2
+            real*8 dimension(*),intent(in) :: wa3
+        end subroutine passb4
+        subroutine passb5(ido,l1,cc,ch,wa1,wa2,wa3,wa4) ! in :helmholtz3D:fftpack.f90
+            integer, optional,intent(in),check(shape(cc,0)==ido),depend(cc) :: ido=shape(cc,0)
+            integer, optional,intent(in),check(shape(cc,2)==l1),depend(cc) :: l1=shape(cc,2)
+            real*8 dimension(ido,5,l1),intent(in) :: cc
+            real*8 dimension(ido,l1,5),intent(out),depend(ido,l1) :: ch
+            real*8 dimension(*),intent(in) :: wa1
+            real*8 dimension(*),intent(in) :: wa2
+            real*8 dimension(*),intent(in) :: wa3
+            real*8 dimension(*),intent(in) :: wa4
+        end subroutine passb5
+        subroutine passb(nac,ido,ip,l1,idl1,cc,c1,c2,ch,ch2,wa) ! in :helmholtz3D:fftpack.f90
+            integer intent(out) :: nac
+            integer, optional,intent(in),check(shape(cc,0)==ido),depend(cc) :: ido=shape(cc,0)
+            integer, optional,intent(in),check(shape(cc,1)==ip),depend(cc) :: ip=shape(cc,1)
+            integer, optional,intent(in),check(shape(cc,2)==l1),depend(cc) :: l1=shape(cc,2)
+            integer, optional,intent(in),check(shape(c2,0)==idl1),depend(c2) :: idl1=shape(c2,0)
+            real*8 dimension(ido,ip,l1),intent(in) :: cc
+            real*8 dimension(ido,l1,ip),intent(out),depend(ido,l1,ip) :: c1
+            real*8 dimension(idl1,ip),intent(inout),depend(ip) :: c2
+            real*8 dimension(ido,l1,ip),intent(inout),depend(ido,l1,ip) :: ch
+            real*8 dimension(idl1,ip),intent(inout),depend(idl1,ip) :: ch2
+            real*8 dimension(*),intent(in) :: wa
+        end subroutine passb
+        subroutine cfftf(n,c,wsave) ! in :helmholtz3D:fftpack.f90
+            integer :: n
+            real*8 dimension(*) :: c
+            real*8 dimension(*) :: wsave
+        end subroutine cfftf
+        subroutine cfftf1(n,c,ch,wa,ifac) ! in :helmholtz3D:fftpack.f90
+            integer intent(in) :: n
+            real*8 dimension(*) :: c
+            real*8 dimension(*) :: ch
+            real*8 dimension(*) :: wa
+            integer dimension(*),intent(in) :: ifac
+        end subroutine cfftf1
+        subroutine passf2(ido,l1,cc,ch,wa1) ! in :helmholtz3D:fftpack.f90
+            integer, optional,intent(in),check(shape(cc,0)==ido),depend(cc) :: ido=shape(cc,0)
+            integer, optional,intent(in),check(shape(cc,2)==l1),depend(cc) :: l1=shape(cc,2)
+            real*8 dimension(ido,2,l1),intent(in) :: cc
+            real*8 dimension(ido,l1,2),intent(out),depend(ido,l1) :: ch
+            real*8 dimension(*),intent(in) :: wa1
+        end subroutine passf2
+        subroutine passf3(ido,l1,cc,ch,wa1,wa2) ! in :helmholtz3D:fftpack.f90
+            integer, optional,intent(in),check(shape(cc,0)==ido),depend(cc) :: ido=shape(cc,0)
+            integer, optional,intent(in),check(shape(cc,2)==l1),depend(cc) :: l1=shape(cc,2)
+            real*8 dimension(ido,3,l1),intent(in) :: cc
+            real*8 dimension(ido,l1,3),intent(out),depend(ido,l1) :: ch
+            real*8 dimension(*),intent(in) :: wa1
+            real*8 dimension(*),intent(in) :: wa2
+        end subroutine passf3
+        subroutine passf4(ido,l1,cc,ch,wa1,wa2,wa3) ! in :helmholtz3D:fftpack.f90
+            integer, optional,intent(in),check(shape(cc,0)==ido),depend(cc) :: ido=shape(cc,0)
+            integer, optional,intent(in),check(shape(cc,2)==l1),depend(cc) :: l1=shape(cc,2)
+            real*8 dimension(ido,4,l1),intent(in) :: cc
+            real*8 dimension(ido,l1,4),intent(out),depend(ido,l1) :: ch
+            real*8 dimension(*),intent(in) :: wa1
+            real*8 dimension(*),intent(in) :: wa2
+            real*8 dimension(*),intent(in) :: wa3
+        end subroutine passf4
+        subroutine passf5(ido,l1,cc,ch,wa1,wa2,wa3,wa4) ! in :helmholtz3D:fftpack.f90
+            integer, optional,intent(in),check(shape(cc,0)==ido),depend(cc) :: ido=shape(cc,0)
+            integer, optional,intent(in),check(shape(cc,2)==l1),depend(cc) :: l1=shape(cc,2)
+            real*8 dimension(ido,5,l1),intent(in) :: cc
+            real*8 dimension(ido,l1,5),intent(out),depend(ido,l1) :: ch
+            real*8 dimension(*),intent(in) :: wa1
+            real*8 dimension(*),intent(in) :: wa2
+            real*8 dimension(*),intent(in) :: wa3
+            real*8 dimension(*),intent(in) :: wa4
+        end subroutine passf5
+        subroutine passf(nac,ido,ip,l1,idl1,cc,c1,c2,ch,ch2,wa) ! in :helmholtz3D:fftpack.f90
+            integer intent(out) :: nac
+            integer, optional,intent(in),check(shape(cc,0)==ido),depend(cc) :: ido=shape(cc,0)
+            integer, optional,intent(in),check(shape(cc,1)==ip),depend(cc) :: ip=shape(cc,1)
+            integer, optional,intent(in),check(shape(cc,2)==l1),depend(cc) :: l1=shape(cc,2)
+            integer, optional,intent(in),check(shape(c2,0)==idl1),depend(c2) :: idl1=shape(c2,0)
+            real*8 dimension(ido,ip,l1),intent(in) :: cc
+            real*8 dimension(ido,l1,ip),intent(out),depend(ido,l1,ip) :: c1
+            real*8 dimension(idl1,ip),intent(inout),depend(ip) :: c2
+            real*8 dimension(ido,l1,ip),intent(inout),depend(ido,l1,ip) :: ch
+            real*8 dimension(idl1,ip),intent(inout),depend(idl1,ip) :: ch2
+            real*8 dimension(*),intent(in) :: wa
+        end subroutine passf
+        subroutine rffti(n,wsave) ! in :helmholtz3D:fftpack.f90
+            integer :: n
+            real*8 dimension(*) :: wsave
+        end subroutine rffti
+        subroutine rffti1(n,wa,ifac) ! in :helmholtz3D:fftpack.f90
+            integer intent(in) :: n
+            real*8 dimension(*),intent(out) :: wa
+            integer dimension(*),intent(inout) :: ifac
+        end subroutine rffti1
+        subroutine rfftb(n,r,wsave) ! in :helmholtz3D:fftpack.f90
+            integer :: n
+            real*8 dimension(*) :: r
+            real*8 dimension(*) :: wsave
+        end subroutine rfftb
+        subroutine rfftb1(n,c,ch,wa,ifac) ! in :helmholtz3D:fftpack.f90
+            integer intent(in) :: n
+            real*8 dimension(*) :: c
+            real*8 dimension(*) :: ch
+            real*8 dimension(*) :: wa
+            integer dimension(*),intent(in) :: ifac
+        end subroutine rfftb1
+        subroutine radb2(ido,l1,cc,ch,wa1) ! in :helmholtz3D:fftpack.f90
+            integer, optional,intent(in),check(shape(cc,0)==ido),depend(cc) :: ido=shape(cc,0)
+            integer, optional,intent(in),check(shape(cc,2)==l1),depend(cc) :: l1=shape(cc,2)
+            real*8 dimension(ido,2,l1),intent(in) :: cc
+            real*8 dimension(ido,l1,2),intent(out),depend(ido,l1) :: ch
+            real*8 dimension(*),intent(in) :: wa1
+        end subroutine radb2
+        subroutine radb3(ido,l1,cc,ch,wa1,wa2) ! in :helmholtz3D:fftpack.f90
+            integer, optional,intent(in),check(shape(cc,0)==ido),depend(cc) :: ido=shape(cc,0)
+            integer, optional,intent(in),check(shape(cc,2)==l1),depend(cc) :: l1=shape(cc,2)
+            real*8 dimension(ido,3,l1),intent(in) :: cc
+            real*8 dimension(ido,l1,3),intent(out),depend(ido,l1) :: ch
+            real*8 dimension(*),intent(in) :: wa1
+            real*8 dimension(*),intent(in) :: wa2
+        end subroutine radb3
+        subroutine radb4(ido,l1,cc,ch,wa1,wa2,wa3) ! in :helmholtz3D:fftpack.f90
+            integer, optional,intent(in),check(shape(cc,0)==ido),depend(cc) :: ido=shape(cc,0)
+            integer, optional,intent(in),check(shape(cc,2)==l1),depend(cc) :: l1=shape(cc,2)
+            real*8 dimension(ido,4,l1),intent(in) :: cc
+            real*8 dimension(ido,l1,4),intent(out),depend(ido,l1) :: ch
+            real*8 dimension(*),intent(in) :: wa1
+            real*8 dimension(*),intent(in) :: wa2
+            real*8 dimension(*),intent(in) :: wa3
+        end subroutine radb4
+        subroutine radb5(ido,l1,cc,ch,wa1,wa2,wa3,wa4) ! in :helmholtz3D:fftpack.f90
+            integer, optional,intent(in),check(shape(cc,0)==ido),depend(cc) :: ido=shape(cc,0)
+            integer, optional,intent(in),check(shape(cc,2)==l1),depend(cc) :: l1=shape(cc,2)
+            real*8 dimension(ido,5,l1),intent(in) :: cc
+            real*8 dimension(ido,l1,5),intent(out),depend(ido,l1) :: ch
+            real*8 dimension(*),intent(in) :: wa1
+            real*8 dimension(*),intent(in) :: wa2
+            real*8 dimension(*),intent(in) :: wa3
+            real*8 dimension(*),intent(in) :: wa4
+        end subroutine radb5
+        subroutine radbg(ido,ip,l1,idl1,cc,c1,c2,ch,ch2,wa) ! in :helmholtz3D:fftpack.f90
+            integer, optional,intent(in),check(shape(cc,0)==ido),depend(cc) :: ido=shape(cc,0)
+            integer, optional,intent(in),check(shape(cc,1)==ip),depend(cc) :: ip=shape(cc,1)
+            integer, optional,intent(in),check(shape(cc,2)==l1),depend(cc) :: l1=shape(cc,2)
+            integer, optional,intent(in),check(shape(c2,0)==idl1),depend(c2) :: idl1=shape(c2,0)
+            real*8 dimension(ido,ip,l1),intent(in) :: cc
+            real*8 dimension(ido,l1,ip),intent(inout),depend(ido,l1,ip) :: c1
+            real*8 dimension(idl1,ip),intent(inout),depend(ip) :: c2
+            real*8 dimension(ido,l1,ip),intent(inout),depend(ido,l1,ip) :: ch
+            real*8 dimension(idl1,ip),intent(inout),depend(idl1,ip) :: ch2
+            real*8 dimension(*),intent(in) :: wa
+        end subroutine radbg
+        subroutine rfftf(n,r,wsave) ! in :helmholtz3D:fftpack.f90
+            integer :: n
+            real*8 dimension(*) :: r
+            real*8 dimension(*) :: wsave
+        end subroutine rfftf
+        subroutine rfftf1(n,c,ch,wa,ifac) ! in :helmholtz3D:fftpack.f90
+            integer intent(in) :: n
+            real*8 dimension(*) :: c
+            real*8 dimension(*) :: ch
+            real*8 dimension(*) :: wa
+            integer dimension(*),intent(in) :: ifac
+        end subroutine rfftf1
+        subroutine radf2(ido,l1,cc,ch,wa1) ! in :helmholtz3D:fftpack.f90
+            integer, optional,intent(in),check(shape(cc,0)==ido),depend(cc) :: ido=shape(cc,0)
+            integer, optional,intent(in),check(shape(cc,1)==l1),depend(cc) :: l1=shape(cc,1)
+            real*8 dimension(ido,l1,2),intent(in) :: cc
+            real*8 dimension(ido,2,l1),intent(out),depend(ido,l1) :: ch
+            real*8 dimension(*),intent(in) :: wa1
+        end subroutine radf2
+        subroutine radf3(ido,l1,cc,ch,wa1,wa2) ! in :helmholtz3D:fftpack.f90
+            integer, optional,intent(in),check(shape(cc,0)==ido),depend(cc) :: ido=shape(cc,0)
+            integer, optional,intent(in),check(shape(cc,1)==l1),depend(cc) :: l1=shape(cc,1)
+            real*8 dimension(ido,l1,3),intent(in) :: cc
+            real*8 dimension(ido,3,l1),intent(out),depend(ido,l1) :: ch
+            real*8 dimension(*),intent(in) :: wa1
+            real*8 dimension(*),intent(in) :: wa2
+        end subroutine radf3
+        subroutine radf4(ido,l1,cc,ch,wa1,wa2,wa3) ! in :helmholtz3D:fftpack.f90
+            integer, optional,intent(in),check(shape(cc,0)==ido),depend(cc) :: ido=shape(cc,0)
+            integer, optional,intent(in),check(shape(cc,1)==l1),depend(cc) :: l1=shape(cc,1)
+            real*8 dimension(ido,l1,4),intent(in) :: cc
+            real*8 dimension(ido,4,l1),intent(out),depend(ido,l1) :: ch
+            real*8 dimension(*),intent(in) :: wa1
+            real*8 dimension(*),intent(in) :: wa2
+            real*8 dimension(*),intent(in) :: wa3
+        end subroutine radf4
+        subroutine radf5(ido,l1,cc,ch,wa1,wa2,wa3,wa4) ! in :helmholtz3D:fftpack.f90
+            integer, optional,intent(in),check(shape(cc,0)==ido),depend(cc) :: ido=shape(cc,0)
+            integer, optional,intent(in),check(shape(cc,1)==l1),depend(cc) :: l1=shape(cc,1)
+            real*8 dimension(ido,l1,5),intent(in) :: cc
+            real*8 dimension(ido,5,l1),intent(out),depend(ido,l1) :: ch
+            real*8 dimension(*),intent(in) :: wa1
+            real*8 dimension(*),intent(in) :: wa2
+            real*8 dimension(*),intent(in) :: wa3
+            real*8 dimension(*),intent(in) :: wa4
+        end subroutine radf5
+        subroutine radfg(ido,ip,l1,idl1,cc,c1,c2,ch,ch2,wa) ! in :helmholtz3D:fftpack.f90
+            integer, optional,intent(in),check(shape(c1,0)==ido),depend(c1) :: ido=shape(c1,0)
+            integer, optional,intent(in),check(shape(c1,2)==ip),depend(c1) :: ip=shape(c1,2)
+            integer, optional,intent(in),check(shape(c1,1)==l1),depend(c1) :: l1=shape(c1,1)
+            integer, optional,intent(in),check(shape(c2,0)==idl1),depend(c2) :: idl1=shape(c2,0)
+            real*8 dimension(ido,ip,l1),intent(out),depend(ido,ip,l1) :: cc
+            real*8 dimension(ido,l1,ip),intent(inout) :: c1
+            real*8 dimension(idl1,ip),intent(inout),depend(ip) :: c2
+            real*8 dimension(ido,l1,ip),intent(inout),depend(ido,l1,ip) :: ch
+            real*8 dimension(idl1,ip),intent(inout),depend(idl1,ip) :: ch2
+            real*8 dimension(*),intent(in) :: wa
+        end subroutine radfg
+    end interface 
+end python module helmholtz3D
+
+! This file was auto-generated with f2py (version:2).
+! See http://cens.ioc.ee/projects/f2py2e/
