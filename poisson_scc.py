@@ -1,10 +1,44 @@
+### ALL REQUIRED PYTHON MODULES.
 import numpy as np
-
 from utils.mesh import *
 from utils.interface import *
+###-----------------------------------------------------------------------------------
+### FILE NAME:    poisson_scc.py
+### CREATE DATE:  DEC. 2020.
+### AUTHOR:       Yuan-Tian (CommuNisM727)
+###-----------------------------------------------------------------------------------
+### DESCRIPTION:  A simple 3D poisson equation test case for 3D IIM solver.
+### NOTED:        A few more simply-constructed test case may be added later,
+###               and this file itself may be renamed.
+###-----------------------------------------------------------------------------------
+
 
 class poisson_scc(object):
+    """ A simple 3D poisson equation (sin*cos*cos).
+
+    Attributes:
+        mesh        (mesh_uniform):     An uniform mesh in 3D cartesian coordinates 
+                                        indicating the computational area.
+        interface   (interface object): An interface built on same mesh object indicating
+                                        where the jumps [u] and [u_n] occur.
+        u_exact     (3D-array):         The exact solution of u.
+        f_exact     (3D-array):         The exact(un-corrected) right hand sides.
+
+    """
+
     def __init__(self, interface, mesh):
+        """ Initialization of class 'poisson_scc'
+            'u_exact' and 'f_exact' are computed.
+
+        Args:
+            mesh        (mesh_uniform):     An uniform mesh in 3D cartesian coordinates 
+                                            indicating the computational area.
+            interface   (interface object): An interface built on same mesh object indicating
+                                            where the jumps [u] and [u_n] occur.
+        Returns:
+            None
+
+        """
         self.mesh = mesh
         self.u_exact = np.ndarray(shape=(mesh.n_x + 1, mesh.n_y + 1, mesh.n_z + 1), dtype=np.float64)
         self.f_exact = np.ndarray(shape=(mesh.n_x + 1, mesh.n_y + 1, mesh.n_z + 1), dtype=np.float64)
@@ -16,8 +50,18 @@ class poisson_scc(object):
                 for k in range(mesh.n_z + 1):
                     self.u_exact[i, j, k] = self.__u_exact(i, j, k)
                     self.f_exact[i, j, k] = self.__f_exact(i, j, k)
+        return
+    
 
-    # Poisson equation.
+    """ 'u_exact' and 'f_exact' on one point are computed.
+
+    Args:
+        i, j, k     (integer):      A Triplet indicating the point (x_i, y_j, z_k).
+
+    Returns:
+        u(x, y, z) = cos(x)*sin(y)*sin(z) if outsides the interface, 0 otherwise.  
+        f(x, y, z) = -3*cos(x)*sin(y)*sin(z) if outsides the interface, 0 otherwise.
+    """
     def __u_exact(self, i, j, k):
         if (self.interface.phi[i, j, k] >= 0):
             return np.cos(self.mesh.xs[i]) * np.sin(self.mesh.ys[j]) * np.sin(self.mesh.zs[k])
@@ -28,8 +72,18 @@ class poisson_scc(object):
             return -3.0 * np.cos(self.mesh.xs[i]) * np.sin(self.mesh.ys[j]) * np.sin(self.mesh.zs[k])
         return 0.0
     
-    # Jump conditions (neg->pos).
-    # Assume the point locates on the interface (drop all the checking).
+
+    """ All jump conditions on one point are computed.
+
+    Args:
+        x, y, z     (real):     A Triplet indicating the point (x, y, z) in cartesian coords.
+    
+    Note: 
+        All points pass into the functions are assumed to be locating on the interface.
+
+    Returns:
+        Jump conditions (from neg. to pos.) [u], [u_x], [u_y], [u_z], [u_n], [f] on the interface.    
+    """
     def jump_u(self, x, y, z):
         return np.cos(x) * np.sin(y) * np.sin(z)
 
@@ -51,6 +105,12 @@ class poisson_scc(object):
         return -3.0 * np.cos(x) * np.sin(y) * np.sin(z)
 
 
-#mesh = mesh_uniform()
-#inte = interface_ellipsoid(0.5, 0.5, 0.2, mesh)
-#a = poisson_scc(inte, mesh)
+""" MODULE TESTS
+mesh = mesh_uniform()
+inte = interface_ellipsoid(0.5, 0.5, 0.2, mesh)
+a = poisson_scc(inte, mesh)
+"""
+
+### MODIFY HISTORY---
+### 08.12.2020      FILE CREATED.           ---727
+###-----------------------------------------------------------------------
