@@ -1,3 +1,4 @@
+### ALL REQUIRED PYTHON MODULES.
 import numpy as np
 import utils.helmholtz3D
 
@@ -7,8 +8,41 @@ from utils.utils_basic import *
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm
+###-----------------------------------------------------------------------------------
+### FILE NAME:      poisson_IIM_solver.py
+### CREATE DATE:    DEC. 2020.
+### AUTHOR:         Yuan-Tian (CommuNisM727)
+###-----------------------------------------------------------------------------------
+### DESCRIPTION:    A 3D IIM solver.
+### NOTED:          Might be split into multiple modules.
+###-----------------------------------------------------------------------------------
+
 
 class poisson_IIM_solver(object):
+    """ A simple 3D IIM poisson solver.
+
+    Attributes:
+        pde         (pde object):       A poisson or helmholtz equation.
+
+        irr_proj    (1D*3-array):       An array of projections of irregular points.
+        irr_dist    (1D-array):         An array of distances to the interface of irregular points.
+        
+        irr_Xi      (1D*3-array):       An array of surface normal direction vector \Xi.
+        irr_Eta     (1D*3-array):       An array of surface tangential vector \Eta.
+        irr_Tau     (1D*3-array):       An array of surface tangential vector \Tau.
+        irr_Kappa   (1D-array):         An array of surface mean curveture.
+
+        irr_jump_u      (1D-array):         An array of [u].
+        irr_jump_f      (1D-array):         An array of [f].
+        irr_jump_u_n    (1D-array):         An array of [u_n].
+        irr_jump_u_nn   (1D-array):         An array of [u_{nn}].
+
+        irr_corr    (1D-array):         Correction terms on irregular points.
+        u           (3D-array):         Numerical solution to the equation.
+        error       (double):           Numerical error to the ground-truth. 
+        
+    """
+
     def __init__(self, pde):
         self.pde = pde
         
@@ -28,7 +62,6 @@ class poisson_IIM_solver(object):
         
         self.u = np.asfortranarray(np.zeros(shape=(self.pde.mesh.n_x + 1, self.pde.mesh.n_y + 1, self.pde.mesh.n_z + 1), dtype=np.float64, order='F'))
         self.error = 0.0
-
 
         self.__irregular_projection()
         self.__solve()
