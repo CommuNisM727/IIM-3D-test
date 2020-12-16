@@ -1,3 +1,4 @@
+### ALL REQUIRED PYTHON MODULES.
 import numpy as np
 import utils.helmholtz3D
 
@@ -7,9 +8,49 @@ from utils.utils_basic import *
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm
+###-----------------------------------------------------------------------------------
+### FILE NAME:      poisson_IIM_solver.py
+### CREATE DATE:    DEC. 2020.
+### AUTHOR:         Yuan-Tian (CommuNisM727)
+###-----------------------------------------------------------------------------------
+### DESCRIPTION:    A 3D IIM solver.
+### NOTED:          Might be split into multiple modules.
+###-----------------------------------------------------------------------------------
+
 
 class poisson_IIM_solver(object):
+    """ A simple 3D IIM poisson solver.
+    Attributes:
+        pde         (pde object):       A poisson or helmholtz equation.
+        irr_proj    (1D*3-array):       An array of projections of irregular points.
+        irr_dist    (1D-array):         An array of distances to the interface of irregular points.
+        
+        irr_Xi      (1D*3-array):       An array of surface normal direction vector \Xi.
+        irr_Eta     (1D*3-array):       An array of surface tangential vector \Eta.
+        irr_Tau     (1D*3-array):       An array of surface tangential vector \Tau.
+        irr_Kappa   (1D-array):         An array of surface mean curveture.
+        irr_jump_u      (1D-array):         An array of [u].
+        irr_jump_f      (1D-array):         An array of [f].
+        irr_jump_u_n    (1D-array):         An array of [u_n].
+        irr_jump_u_nn   (1D-array):         An array of [u_{nn}].
+        irr_corr    (1D-array):         Correction terms on irregular points.
+        u           (3D-array):         Numerical solution to the equation.
+        error       (double):           Numerical error to the ground-truth. 
+        
+    """
+
     def __init__(self, pde):
+        """ Initialization of class 'poisson IIM solver'.
+            Initialization, solving, and error estimation are all done here.
+
+        Args:
+            pde         (pde object):       The PDE to be solved.
+
+        Returns:
+            None
+
+        """
+
         self.pde = pde
         
         self.irr_proj = np.ndarray(shape=(self.pde.interface.n_irr + 1, 3), dtype=np.float64)
@@ -35,6 +76,32 @@ class poisson_IIM_solver(object):
         self.__error_estimate()
 
     def __irregular_projection(self):
+        """ The projections onto the interface of each irregular points are found here.
+        Computation:
+            Projections 'irr_proj' and distances 'irr_dist' are obtained in 2 steps:
+            1.  Directly draw a projection from solving quadratic equation as the initial point.
+            2.  Apply Newton iteration till the gradient on level-set function is normal to interface.
+                irr_proj
+                irr_dist
+            
+            Normal \Xi, tangential directions '\Eta, \Tau', curvature '\Kappa' at projecting points.
+                irr_Xi      
+                irr_Eta     
+                irr_Tau     
+                irr_Kappa
+
+            All jumping conditions at projecting points.
+                irr_jump_u  
+                irr_jump_f  
+                irr_jump_u_n
+                irr_jump_u_nn
+                irr_corr
+
+        Args & Returns:
+            None
+
+        """
+
         # Find the projections & basic curve information.
         for i in range(1, self.pde.mesh.n_x):
             for j in range(1, self.pde.mesh.n_y):
@@ -62,6 +129,7 @@ class poisson_IIM_solver(object):
                         self.__irregular_projection_corr(index, i, j, k)
 
     def __irregular_projection_initial(self, i, j, k):
+        # \phi + |\nabla \phi|\alpha + 1/2 p^T \nabla^2 \phi p \alpha^2 = 0
         # Initial orthogonal projection from [i, j, k] to interface. (root of 2nd taylor expansion of phi)
         phi_x = self.pde.interface.phi_x[i, j, k]
         phi_y = self.pde.interface.phi_y[i, j, k]   
