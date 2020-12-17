@@ -44,6 +44,20 @@ class poisson_IIM_solver(object):
     """
 
     def __init__(self, pde):
+        """ Initialization of class 'poisson_IIM_solver'
+            'u_exact' and 'f_exact' are computed.
+
+        Args:
+            mesh        (mesh_uniform):     An uniform mesh in 3D cartesian coordinates 
+                                            indicating the computational area.
+            interface   (interface object): An interface built on same mesh object indicating
+                                            where the jumps [u] and [u_n] occur.
+        Returns:
+            None
+
+        Notes:
+
+        """
         self.pde = pde
         
         self.irr_proj = np.ndarray(shape=(self.pde.interface.n_irr + 1, 3), dtype=np.float64)
