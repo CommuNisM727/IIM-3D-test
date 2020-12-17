@@ -165,8 +165,8 @@ class poisson_IIM_solver(object):
         
         # Quadratic form (IIM overview [Li], CLAIMED to have 3rd ACC).
         # \phi + |\nabla \phi| * \alpha +  \alpha^2/2 * (p^t Hess p) = 0
-        a = phi_x * (phi_xx*phi_x + phi_xy*phi_y + phi_xz*phi_z)
-        +   phi_y * (phi_yx*phi_x + phi_yy*phi_y + phi_yz*phi_z)
+        a = phi_x * (phi_xx*phi_x + phi_xy*phi_y + phi_xz*phi_z)    \
+        +   phi_y * (phi_yx*phi_x + phi_yy*phi_y + phi_yz*phi_z)    \
         +   phi_z * (phi_zx*phi_x + phi_zy*phi_y + phi_zz*phi_z)
         b = norm_grad_phi
         c = self.pde.interface.phi[i, j, k]
@@ -369,19 +369,20 @@ class poisson_IIM_solver(object):
             self.irr_Tau[index, 2] = -phi_y_nm*phi_z_nm/norm
             
         # Mean curvature. (https://math.mit.edu/classes/18.086/2007/levelsetnotes.pdf)
-        self.irr_Kappa[index] = phi_xx * (phi_y*phi_y + phi_z*phi_z)
-        +                       phi_yy * (phi_x*phi_x + phi_z*phi_z) 
-        +                       phi_zz * (phi_x*phi_x + phi_y*phi_y)
-        -                       phi_x * (phi_xy*phi_y + phi_xz*phi_z)
-        -                       phi_y * (phi_yx*phi_x + phi_yz*phi_z)
-        -                       phi_z * (phi_zx*phi_x + phi_zy*phi_y)
+        self.irr_Kappa[index] = phi_xx * (phi_y*phi_y + phi_z*phi_z)    \
+        +                       phi_yy * (phi_x*phi_x + phi_z*phi_z)    \
+        +                       phi_zz * (phi_x*phi_x + phi_y*phi_y)    \
+        -                       phi_x * (phi_xy*phi_y + phi_xz*phi_z)   \
+        -                       phi_y * (phi_yx*phi_x + phi_yz*phi_z)   \
+        -                       phi_z * (phi_zx*phi_x + phi_zy*phi_y)   
         self.irr_Kappa[index] = self.irr_Kappa[index] / (phi_x**2+phi_y**2+phi_z**2) / np.sqrt(phi_x**2 + phi_y**2 + phi_z**2)
     
         self.irr_jump_u[index] = self.pde.jump_u(x, y, z)
         self.irr_jump_f[index] = self.pde.jump_f(x, y, z)
-        self.irr_jump_u_n[index] = self.pde.jump_u_x(x, y, z) * phi_x_nm + self.pde.jump_u_y(x, y, z) * phi_y_nm + self.pde.jump_u_z(x, y, z) * phi_z_nm
+        self.irr_jump_u_n[index] = self.pde.jump_u_n(x, y, z)
+        #self.irr_jump_u_n[index] = self.pde.jump_u_x(x, y, z) * phi_x_nm + self.pde.jump_u_y(x, y, z) * phi_y_nm + self.pde.jump_u_z(x, y, z) * phi_z_nm
 
-    def __irregular_projection_jump(self, index, i, j, k, norm_l1=3, norm_l2=2.4, n_points=18):
+    def __irregular_projection_jump(self, index, i, j, k, norm_l1=3, norm_l2=2.4, n_points=16):
         """ A module for computing [u_{nn}] using least square.
 
         Args:
@@ -436,6 +437,8 @@ class poisson_IIM_solver(object):
         # n_features (fixed) * n_points.
         n_features = 15
         neighbour_dict = np.ndarray(shape=(n_features, n_points), dtype=np.float64)
+        neighbour_dict = np.ndarray(shape=(n_points, n_features), dtype=np.float64)
+        
 
         for n_ in range(n):
             index_ = neighbours[n_]
@@ -451,30 +454,30 @@ class poisson_IIM_solver(object):
             Tau = neighbour_Tau_proj[n_]
 
             # o0
-            neighbour_dict[0, n_] = 1.0
+            neighbour_dict[n_, 0] = 1.0
             # o1
-            neighbour_dict[1, n_] = Eta
-            neighbour_dict[2, n_] = Tau
+            neighbour_dict[n_, 1] = Eta
+            neighbour_dict[n_, 2] = Tau
             # o2
-            neighbour_dict[3, n_] = 0.5*Eta*Eta #
-            neighbour_dict[4, n_] = Eta*Tau
-            neighbour_dict[5, n_] = 0.5*Tau*Tau #
+            neighbour_dict[n_, 3] = 0.5*Eta*Eta #
+            neighbour_dict[n_, 4] = Eta*Tau
+            neighbour_dict[n_, 5] = 0.5*Tau*Tau #
             # o3
-            neighbour_dict[6, n_] = Eta*Eta*Eta
-            neighbour_dict[7, n_] = Eta*Eta*Tau
-            neighbour_dict[8, n_] = Eta*Tau*Tau
-            neighbour_dict[9, n_] = Tau*Tau*Tau
+            neighbour_dict[n_, 6] = Eta*Eta*Eta
+            neighbour_dict[n_, 7] = Eta*Eta*Tau
+            neighbour_dict[n_, 8] = Eta*Tau*Tau
+            neighbour_dict[n_, 9] = Tau*Tau*Tau
             # o4
-            neighbour_dict[10, n_] = Eta*Eta*Eta*Eta
-            neighbour_dict[11, n_] = Eta*Eta*Eta*Tau
-            neighbour_dict[12, n_] = Eta*Eta*Tau*Tau
-            neighbour_dict[13, n_] = Eta*Tau*Tau*Tau
-            neighbour_dict[14, n_] = Tau*Tau*Tau*Tau
+            neighbour_dict[n_, 10] = Eta*Eta*Eta*Eta
+            neighbour_dict[n_, 11] = Eta*Eta*Eta*Tau
+            neighbour_dict[n_, 12] = Eta*Eta*Tau*Tau
+            neighbour_dict[n_, 13] = Eta*Tau*Tau*Tau
+            neighbour_dict[n_, 14] = Tau*Tau*Tau*Tau
             
         
-        derivs = np.dot(np.linalg.pinv(np.transpose(neighbour_dict)), neighbour_jump_u)
-        self.irr_jump_u_nn[index] = self.irr_jump_u[index] 
-        - self.irr_Kappa[index] * self.irr_jump_u_n[index]
+        derivs = np.dot(np.linalg.pinv(neighbour_dict), neighbour_jump_u)
+        self.irr_jump_u_nn[index] = self.irr_jump_f[index]  \
+        - self.irr_Kappa[index] * self.irr_jump_u_n[index]  \
         - derivs[3] - derivs[5]
 
     def __irregular_projection_corr(self, index, i, j, k):
@@ -491,11 +494,11 @@ class poisson_IIM_solver(object):
 
         """
 
-        d = self.irr_dist[index]        
-        corr = self.irr_jump_u[index] 
-        + d * self.irr_jump_u_n[index]
-        + 0.5*d*d * self.irr_jump_u_nn[index]
-        
+        d = self.irr_dist[index]
+        corr = self.irr_jump_u[index]   \
+        + d * self.irr_jump_u_n[index]  \
+        #+ 0.5*d*d * self.irr_jump_u_nn[index]
+
         # x-.
         if (self.pde.interface.phi[i, j, k] <= 0 and self.pde.interface.phi[i - 1, j, k] > 0):
             index_ = self.pde.interface.irr[i - 1, j, k]
@@ -568,8 +571,8 @@ class poisson_IIM_solver(object):
         PERTRB = np.array(0, dtype=np.float64)
         IERROR = np.array(-1, dtype=np.int32)
         W = np.zeros(shape=(
-            30 + self.pde.mesh.n_x + self.pde.mesh.n_y + 5*self.pde.mesh.n_z 
-            + np.max([self.pde.mesh.n_x, self.pde.mesh.n_y, self.pde.mesh.n_z]) 
+            30 + self.pde.mesh.n_x + self.pde.mesh.n_y + 5*self.pde.mesh.n_z    \
+            + np.max([self.pde.mesh.n_x, self.pde.mesh.n_y, self.pde.mesh.n_z]) \
             + 7*((self.pde.mesh.n_x + 1)//2 + (self.pde.mesh.n_y + 1)//2)), dtype=np.float64)
     
         print("FORTRAN OUTPUT:")
