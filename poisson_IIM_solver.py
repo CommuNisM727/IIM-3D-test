@@ -20,10 +20,8 @@ from matplotlib import cm
 
 class poisson_IIM_solver(object):
     """ A simple 3D IIM poisson solver.
-
     Attributes:
         pde         (pde object):       A poisson or helmholtz equation.
-
         irr_proj    (1D*3-array):       An array of projections of irregular points.
         irr_dist    (1D-array):         An array of distances to the interface of irregular points.
         
@@ -31,12 +29,10 @@ class poisson_IIM_solver(object):
         irr_Eta     (1D*3-array):       An array of surface tangential vector \Eta.
         irr_Tau     (1D*3-array):       An array of surface tangential vector \Tau.
         irr_Kappa   (1D-array):         An array of surface mean curveture.
-
         irr_jump_u      (1D-array):         An array of [u].
         irr_jump_f      (1D-array):         An array of [f].
         irr_jump_u_n    (1D-array):         An array of [u_n].
         irr_jump_u_nn   (1D-array):         An array of [u_{nn}].
-
         irr_corr    (1D-array):         Correction terms on irregular points.
         u           (3D-array):         Numerical solution to the equation.
         error       (double):           Numerical error to the ground-truth. 
@@ -44,20 +40,15 @@ class poisson_IIM_solver(object):
     """
 
     def __init__(self, pde):
-        """ Initialization of class 'poisson_IIM_solver'
-            'u_exact' and 'f_exact' are computed.
-
+        """ Initialization of class 'poisson IIM solver'.
+            Initialization, solving, and error estimation are all done here.
         Args:
-            mesh        (mesh_uniform):     An uniform mesh in 3D cartesian coordinates 
-                                            indicating the computational area.
-            interface   (interface object): An interface built on same mesh object indicating
-                                            where the jumps [u] and [u_n] occur.
+            pde         (pde object):       The PDE to be solved.
         Returns:
             None
 
-        Notes:
-
         """
+
         self.pde = pde
         
         self.irr_proj = np.ndarray(shape=(self.pde.interface.n_irr + 1, 3), dtype=np.float64)
@@ -77,12 +68,37 @@ class poisson_IIM_solver(object):
         self.u = np.asfortranarray(np.zeros(shape=(self.pde.mesh.n_x + 1, self.pde.mesh.n_y + 1, self.pde.mesh.n_z + 1), dtype=np.float64, order='F'))
         self.error = 0.0
 
+
         self.__irregular_projection()
         self.__solve()
         self.__error_estimate()
 
     def __irregular_projection(self):
-        # Find the projections & basic curve information.
+        """ The projections onto the interface of each irregular points are found here.
+        Computation:
+            1. Projections 'irr_proj' and distances 'irr_dist' are obtained in 2 steps:
+            (1).  Directly draw a projection from solving quadratic equation as the initial point.
+            (2).  Apply Newton iteration till the gradient on level-set function is normal to interface.
+                irr_proj
+                irr_dist
+            
+            2. Normal \Xi, tangential directions '\Eta, \Tau', curvature '\Kappa' at projecting points.
+                irr_Xi      
+                irr_Eta     
+                irr_Tau     
+                irr_Kappa
+            3. All jumping conditions at projecting points.
+                irr_jump_u  
+                irr_jump_f  
+                irr_jump_u_n
+                irr_jump_u_nn
+                irr_corr
+        Args & Returns:
+            None
+
+        """
+
+        # 1. Find the projections & basic curve information.
         for i in range(1, self.pde.mesh.n_x):
             for j in range(1, self.pde.mesh.n_y):
                 for k in range(1, self.pde.mesh.n_z):
@@ -90,15 +106,16 @@ class poisson_IIM_solver(object):
                         index = self.pde.interface.irr[i, j, k]
                         #print("index:", index)
 
-                        # Initialize the projection P_0=(x_0, y_0, z_0)
+                        # (1). Initialize the projection.
                         [alpha, x_0, y_0, z_0] = self.__irregular_projection_initial(i, j, k)
-                        # Apply several Newton iterations to obtain the final projection P_k=(x_k, y_k, z_k)
+                        # (2). Apply several Newton iterations to obtain the final projection.
                         [alpha, x_p, y_p, z_p] = self.__irregular_projection_iterate(i, j, k, x_0, y_0, z_0, alpha)
 
+                        # 2. Basic curve derivatives information.
                         self.__irregular_projection_info(index, x_p, y_p, z_p, alpha)
 
-        # 1. Find the second order normal derivatives of projections on the interface.
-        # 2. Calculate the correction terms.
+        # 2. Find the second order normal derivatives of projections on the interface.
+        # 3. Calculate the correction terms.
         for i in range(1, self.pde.mesh.n_x):
             for j in range(1, self.pde.mesh.n_y):
                 for k in range(1, self.pde.mesh.n_z):
@@ -109,6 +126,21 @@ class poisson_IIM_solver(object):
                         self.__irregular_projection_corr(index, i, j, k)
 
     def __irregular_projection_initial(self, i, j, k):
+        """ A module for computing the projection. (AN OVERVIEW OF THE IMMERSED INTERFACE METHOD ... [Li.])
+            For accurate SDF as level-set function \phi, we have x* = x - (\nabla \phi) \phi. (Eikonal equation)
+            For arbitrary level-set function, we apply a second order Tylor-EXP approximation, which is solving:
+                \phi + |\nabla \phi|\alpha + 1/2 p^T \nabla^2 \phi p \alpha^2 = 0,
+            where x* = x + \alpha p, p = (\nabla\phi) / |\nabla\phi|.
+
+        Args:
+            i, j, k     (integer):      Index of irregular point to be projected.
+
+        Returns:
+            alpha:      (real):         Distance to the projecting point.
+            x, y, z     (real):         Coords of the projecting point.
+
+        """
+
         # Initial orthogonal projection from [i, j, k] to interface. (root of 2nd taylor expansion of phi)
         phi_x = self.pde.interface.phi_x[i, j, k]
         phi_y = self.pde.interface.phi_y[i, j, k]   
@@ -131,8 +163,8 @@ class poisson_IIM_solver(object):
         phi_zy = self.pde.interface.phi_zy[i, j, k]
         phi_zz = self.pde.interface.phi_zz[i, j, k]
         
-        # Quadratic form (IIM overview [Li], CLAIMED to have 3rd acc).
-        # phi(x) + |\nabla phi| * \alpha +  \alpha^2/2 * (p^t Hess p) = 0
+        # Quadratic form (IIM overview [Li], CLAIMED to have 3rd ACC).
+        # \phi + |\nabla \phi| * \alpha +  \alpha^2/2 * (p^t Hess p) = 0
         a = phi_x * (phi_xx*phi_x + phi_xy*phi_y + phi_xz*phi_z)
         +   phi_y * (phi_yx*phi_x + phi_yy*phi_y + phi_yz*phi_z)
         +   phi_z * (phi_zx*phi_x + phi_zy*phi_y + phi_zz*phi_z)
@@ -152,18 +184,33 @@ class poisson_IIM_solver(object):
                         self.pde.mesh.zs[k] + r2 * phi_z]
 
     def __irregular_projection_iterate(self, i_0, j_0, k_0, x_0, y_0, z_0, alpha, iter_max=50, eps=1e-10):
+        """ A module for computing the final projection.
+            Newton fixed point iteration (x_{k+1} = x_k - Df^{-1} f):
+                function(f):   (x_fix - x + \lambda*phi_x, y_fix - y + \lambda*phi_y, z_fix - z + \lambda*phi_z, phi).
+                variable(x):   (x, y, z, \lambda).
+            where \lambda is proportional to the projecting distance.
+
+        Args:
+            i_0, j_0, k_0   (integer):      Index of irregular point to be projected.
+            x_0, y_0, z_0   (real):         Initial projecting point guess.
+
+        Returns:
+            alpha:          (real):         Distance to the projecting point.
+            x, y, z         (real):         Coords of the projecting point.
+
+        """
+
         # Project from (x_fix, y_fix, z_fix).
         x_fix = self.pde.mesh.xs[i_0]
         y_fix = self.pde.mesh.ys[j_0]
         z_fix = self.pde.mesh.zs[k_0]
         
-        # Iteration variable (x, y, z, phi).
-        # Initial guess of projection point (x_k, y_k, z_k) obtained from quadratic form.
+        # Initial guess of projection point (x_k, y_k, z_k) obtained from solving quadratic equation.
+        # Initial guess of distance \lambda = \alpha / |\nabla \phi(x_0, y_0, z_0)|. 
         x_k = x_0
         y_k = y_0
         z_k = z_0
-        # Initial guess of distance |phi|_0 = alpha / |grad phi(x_0, y_0, z_0)|. 
-        norm_grad_phi_k = alpha / self.__norm_grad_phi(x_k, y_k, z_k)
+        norm_grad_phi_k = alpha / self.__norm_grad_phi(x_0, y_0, z_0)
 
         for i in range(iter_max):
             #print("ITR", i)
@@ -181,6 +228,18 @@ class poisson_IIM_solver(object):
         return [norm_grad_phi_k * self.__norm_grad_phi(x_k, y_k, z_k), x_k, y_k, z_k]
 
     def __newton_increasement(self, x_fix, y_fix, z_fix, x_k, y_k, z_k, lambda_):
+        """ A module for computing the increasement Df^{-1} f in Newton iteration.
+
+        Args:
+            x_fix, y_fix, z_fix     (real):     The coords of point to be projected.
+            x_k, y_k, z_k           (real):     The coords of temporary projecting point.
+            lambda_                 (real):     Proportional to the temporary projecting distance.
+
+        Returns:
+            delta                   (real*4):   The Newton increasement.
+
+        """
+
         # Interpolate all derivatives of point (x_k, y_k, z_k).
         i = int((x_k - self.pde.mesh.x_inf) / self.pde.mesh.h_x)
         j = int((y_k - self.pde.mesh.y_inf) / self.pde.mesh.h_y)
@@ -190,10 +249,10 @@ class poisson_IIM_solver(object):
                                                 self.pde.mesh.xs, self.pde.mesh.ys, self.pde.mesh.zs,
                                                 i - int((n - 1) / 2), j - int((n - 1) / 2), k - int((n - 1) / 2),
                                                 arr, n)
-        # Tricubic interpolating.
+        # Tricubic interpolating (4^3 points).
         phi = Pn_interp_3d_partial(self.pde.interface.phi, 4)
 
-        # Trilinear interpolating.
+        # Trilinear interpolating (2^3 points).
         phi_x, phi_y, phi_z = self.__phi_derivs1_trilinear(x_k, y_k, z_k, i, j, k)
         phi_xx, phi_xy, phi_xz, phi_yx, phi_yy, phi_yz, phi_zx, phi_zy, phi_zz = self.__phi_derivs2_trilinear(x_k, y_k, z_k, i, j, k)
 
@@ -228,6 +287,16 @@ class poisson_IIM_solver(object):
         return np.linalg.solve(Df, f)
 
     def __norm_grad_phi(self, x, y, z):
+        """ A module for computing the norm of gradient |\nabla \phi| at (x, y, z).
+
+        Args:
+            x, y, z     (real):     The coords of point.
+
+        Returns:
+            |\nabla \phi| at (x, y, z).
+
+        """
+
         i = int((x - self.pde.mesh.x_inf) / self.pde.mesh.h_x)
         j = int((y - self.pde.mesh.y_inf) / self.pde.mesh.h_y)
         k = int((z - self.pde.mesh.z_inf) / self.pde.mesh.h_z)
@@ -237,6 +306,23 @@ class poisson_IIM_solver(object):
         return np.sqrt(phi_x*phi_x + phi_y*phi_y + phi_z*phi_z)
 
     def __irregular_projection_info(self, index, x, y, z, alpha):
+        """ A module for computing and saving the basic information of irregular point projection on the interface.
+
+        Args:
+            index       (integer>0):    The index of irregular point.
+            x, y, z     (real):         The coords of irregular point projection.
+            alpha       (real):         The distance to the projection.
+
+        Returns:
+            None
+
+        Computation:
+            irr_proj, irr_dist are already found in previous steps, assignment only here.
+            Directions \Xi, \Eta, \Tau and curvature \Kappa are calculated here (AN OVERVIEW OF THE IMMERSED INTERFACE METHOD ... [Li.])
+            [u], [f], [u_n] are assigned here.
+
+        """
+
         self.irr_proj[index, 0] = x
         self.irr_proj[index, 1] = y
         self.irr_proj[index, 2] = z
@@ -293,9 +379,25 @@ class poisson_IIM_solver(object):
     
         self.irr_jump_u[index] = self.pde.jump_u(x, y, z)
         self.irr_jump_f[index] = self.pde.jump_f(x, y, z)
-        self.irr_jump_u_n[index] = self.pde.jump_u_n(x, y, z)
+        self.irr_jump_u_n[index] = self.pde.jump_u_x(x, y, z) * phi_x_nm + self.pde.jump_u_y(x, y, z) * phi_y_nm + self.pde.jump_u_z(x, y, z) * phi_z_nm
 
-    def __irregular_projection_jump(self, index, i, j, k, norm_l1=3, norm_l2=2.4, n_points=12):
+    def __irregular_projection_jump(self, index, i, j, k, norm_l1=3, norm_l2=2.4, n_points=18):
+        """ A module for computing [u_{nn}] using least square.
+
+        Args:
+            i, j, k     (integer):      The index of coords of irregular point.
+            norm_l1     (real):         Neighbour search |area|_1 < norm_l1 * h.
+            norm_l2     (real):         Neighbour search |area|_2 < norm_l2 * h.
+            n_points    (integer):      Number of neighbour points used.
+
+        Returns:
+            None
+
+        Computation:
+            [u_{nn}] are assigned here. ([u_{nn}] = [f_n] - \Kappa [u_n] - [u_{surface Laplacian}])
+
+        """
+
         x = self.irr_proj[index, 0]
         y = self.irr_proj[index, 1]
         z = self.irr_proj[index, 2]
@@ -331,7 +433,7 @@ class poisson_IIM_solver(object):
         neighbour_Eta_proj = np.ndarray(shape=(n_points, ), dtype=np.float64)
         neighbour_Tau_proj = np.ndarray(shape=(n_points, ), dtype=np.float64)
         
-        # n_features * n_points.
+        # n_features (fixed) * n_points.
         n_features = 15
         neighbour_dict = np.ndarray(shape=(n_features, n_points), dtype=np.float64)
 
@@ -371,17 +473,28 @@ class poisson_IIM_solver(object):
             
         
         derivs = np.dot(np.linalg.pinv(np.transpose(neighbour_dict)), neighbour_jump_u)
-        self.irr_jump_u_nn[index] = self.irr_jump_u_n[index] 
-        - self.irr_Kappa * self.irr_jump_u_n 
+        self.irr_jump_u_nn[index] = self.irr_jump_u[index] 
+        - self.irr_Kappa[index] * self.irr_jump_u_n[index]
         - derivs[3] - derivs[5]
 
     def __irregular_projection_corr(self, index, i, j, k):
-        jump_u = self.irr_jump_u[index]
-        jump_n_n = self.irr_jump_u_n[index]
-        jump_u_nn = self.irr_jump_u_nn[index]
-        d = self.irr_dist[index]
-        
-        corr = jump_u + d*jump_n_n + 0.5*d*d*jump_u_nn
+        """ A module for computing corrections.
+
+        Args:
+            i, j, k     (integer):      The index of coords of irregular point.
+
+        Returns:
+            None
+
+        Computation:
+            correction term [u] + d*[u_n] + 1/2 d^2*[u_{nn}].
+
+        """
+
+        d = self.irr_dist[index]        
+        corr = self.irr_jump_u[index] 
+        + d * self.irr_jump_u_n[index]
+        + 0.5*d*d * self.irr_jump_u_nn[index]
         
         # x-.
         if (self.pde.interface.phi[i, j, k] <= 0 and self.pde.interface.phi[i - 1, j, k] > 0):
@@ -495,8 +608,19 @@ class poisson_IIM_solver(object):
 
         print(self.error)
 
-    # Estimate the derivatives of off-grid points.
+
     def __phi_derivs1_trilinear(self, x, y, z, i, j, k):
+        """ A module for estimating the 1st-order derivatives of off-grid points.
+
+        Args:
+            x, y, z     (real):     The coords of point.
+            i, j, k     (integer):  The floor index of point.
+
+        Returns:
+            All 3 1st-order derivatives.
+
+        """
+
         P2_interp_3d = lambda arr: Pn_interp_3d(x, y, z, 
                                                 self.pde.mesh.xs, self.pde.mesh.ys, self.pde.mesh.zs,
                                                 i + 0, j + 0, k + 0,
@@ -510,6 +634,17 @@ class poisson_IIM_solver(object):
         return [phi_x, phi_y, phi_z]
 
     def __phi_derivs2_trilinear(self, x, y, z, i, j, k):
+        """ A module for estimating the 2nd-order derivatives of off-grid points.
+
+        Args:
+            x, y, z     (real):     The coords of point.
+            i, j, k     (integer):  The floor index of point.
+
+        Returns:
+            All 9 2nd-order derivatives.
+
+        """
+        
         P2_interp_3d = lambda arr: Pn_interp_3d(x, y, z, 
                                                 self.pde.mesh.xs, self.pde.mesh.ys, self.pde.mesh.zs,
                                                 i + 0, j + 0, k + 0,
