@@ -480,6 +480,8 @@ class poisson_IIM_solver(object):
         - self.irr_Kappa[index] * self.irr_jump_u_n[index]  \
         - derivs[3] - derivs[5]
 
+        # TODO
+
     def __irregular_projection_corr(self, index, i, j, k):
         """ A module for computing corrections.
 

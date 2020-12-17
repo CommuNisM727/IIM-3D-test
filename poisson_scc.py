@@ -101,6 +101,9 @@ class poisson_scc(object):
         
         return self.jump_u_x(x, y, z)*normal_x + self.jump_u_y(x, y, z)*normal_y + self.jump_u_z(x, y, z)*normal_z
 
+    def jump_u_nn(self, x, y ,z, n_x, n_y, n_z):
+        
+
     def jump_f(self, x, y, z):
         return -3.0 * np.cos(x) * np.sin(y) * np.sin(z)
 
