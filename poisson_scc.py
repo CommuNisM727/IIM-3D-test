@@ -101,8 +101,20 @@ class poisson_scc(object):
         
         return self.jump_u_x(x, y, z)*normal_x + self.jump_u_y(x, y, z)*normal_y + self.jump_u_z(x, y, z)*normal_z
 
-    def jump_u_nn(self, x, y ,z, n_x, n_y, n_z):
-        
+    def jump_u_nn(self, x, y, z, n_x, n_y, n_z):
+        u_xx = -np.cos(x) * np.sin(y) * np.sin(z)
+        u_xy = -np.sin(x) * np.cos(y) * np.sin(z)
+        u_xz = -np.sin(x) * np.sin(y) * np.cos(z)
+        u_yx = np.sin(x) * np.cos(y) * np.sin(z)
+        u_yy = -np.cos(x) * np.sin(y) * np.sin(z)
+        u_yz = np.cos(x) * np.cos(y) * np.cos(z)
+        u_zx = -np.sin(x) * np.sin(y) * np.cos(z)
+        u_zy = np.cos(x) * np.cos(y) * np.cos(z)
+        u_zz = -np.cos(x) * np.sin(y) * np.sin(z)
+
+        return n_x * (u_xx * n_x + u_xy * n_y + u_xz * n_z) \
+        +      n_y * (u_yx * n_x + u_yy * n_y + u_yz * n_z) \
+        +      n_z * (u_zx * n_x + u_zy * n_y + u_zz * n_z)
 
     def jump_f(self, x, y, z):
         return -3.0 * np.cos(x) * np.sin(y) * np.sin(z)
