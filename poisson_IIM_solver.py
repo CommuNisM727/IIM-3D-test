@@ -1,4 +1,5 @@
 ### ALL REQUIRED PYTHON MODULES.
+import time
 import numpy as np
 import utils.helmholtz3D
 
@@ -67,10 +68,16 @@ class poisson_IIM_solver(object):
         
         self.u = np.asfortranarray(np.zeros(shape=(self.pde.mesh.n_x + 1, self.pde.mesh.n_y + 1, self.pde.mesh.n_z + 1), dtype=np.float64, order='F'))
         self.error = 0.0
-
-
+        
+        time_a=time.time()
         self.__irregular_projection()
+        time_b=time.time()
+        print('T_proj: ', time_a-time_b)
+
+        time_a=time.time()
         self.__solve()
+        time_b=time.time()
+        print('T_solve: ', time_a-time_b)
         self.__error_estimate()
 
     def __irregular_projection(self):
@@ -98,6 +105,7 @@ class poisson_IIM_solver(object):
 
         """
 
+        time_a=time.time()
         # 1. Find the projections & basic curve information.
         for i in range(1, self.pde.mesh.n_x):
             for j in range(1, self.pde.mesh.n_y):
@@ -113,7 +121,10 @@ class poisson_IIM_solver(object):
 
                         # 2. Basic curve derivatives information.
                         self.__irregular_projection_info(index, x_p, y_p, z_p, alpha)
+        time_b=time.time()
+        print('T_proj_curve: ', time_a-time_b)
 
+        time_a=time.time()
         # 2. Find the second order normal derivatives of projections on the interface.
         # 3. Calculate the correction terms.
         for i in range(1, self.pde.mesh.n_x):
@@ -124,6 +135,8 @@ class poisson_IIM_solver(object):
                         #print("index:", index)
                         self.__irregular_projection_jump(index, i, j, k)
                         self.__irregular_projection_corr(index, i, j, k)
+        time_b=time.time()
+        print('T_proj_correction: ', time_a-time_b)
 
     def __irregular_projection_initial(self, i, j, k):
         """ A module for computing the projection. (AN OVERVIEW OF THE IMMERSED INTERFACE METHOD ... [Li.])
@@ -382,7 +395,7 @@ class poisson_IIM_solver(object):
         #self.irr_jump_u_n[index] = self.pde.jump_u_n(x, y, z)
         self.irr_jump_u_n[index] = self.pde.jump_u_x(x, y, z) * phi_x_nm + self.pde.jump_u_y(x, y, z) * phi_y_nm + self.pde.jump_u_z(x, y, z) * phi_z_nm
 
-    def __irregular_projection_jump(self, index, i, j, k, norm_l1=3, norm_l2=2.4, n_points=24):
+    def __irregular_projection_jump(self, index, i, j, k, norm_l1=3, norm_l2=2.4, n_points=12):
         """ A module for computing [u_{nn}] using least square.
 
         Args:
@@ -428,14 +441,13 @@ class poisson_IIM_solver(object):
                             distances[n] = dist
                             n = n + 1
         
-        #""" Meaningless since least square approximation is calculated from package module.
+        # Selecting the nearest 'n_points' neighbours.
         neighbours = neighbours[:n]
         distances = distances[:n]
         
         order = np.argsort(distances)
         neighbours = neighbours[order]
         neighbours = neighbours[:n_points]
-        #"""
 
         neighbour_jump_u = np.ndarray(shape=(n_points, ), dtype=np.float64)
         
@@ -475,7 +487,7 @@ class poisson_IIM_solver(object):
             neighbour_dict[n_, 14] = Tau*Tau*Tau*Tau
         
 
-        derivs = np.linalg.lstsq(neighbour_dict, neighbour_jump_u)[0]
+        derivs = np.linalg.lstsq(neighbour_dict, neighbour_jump_u, rcond=1e-10)[0]
         
         """ Directly calling least square module.
         #ex = np.floor(np.log2(self.pde.mesh.multiplier) / 2) + 4
@@ -612,7 +624,7 @@ class poisson_IIM_solver(object):
             + np.max([self.pde.mesh.n_x, self.pde.mesh.n_y, self.pde.mesh.n_z]) \
             + 7*((self.pde.mesh.n_x + 1)//2 + (self.pde.mesh.n_y + 1)//2)), dtype=np.float64)
     
-        print("FORTRAN OUTPUT:")
+        #print("FORTRAN OUTPUT:")
         #"""
         utils.helmholtz3D.hw3crtt(
             xs=np.array(self.pde.mesh.x_inf, dtype=np.float64), xf=np.array(self.pde.mesh.x_sup, dtype=np.float64), l=np.array(self.pde.mesh.n_x, dtype=np.int32), lbdcnd=np.array(1, dtype=np.int32), bdxs=BDXS, bdxf=BDXF,
@@ -620,9 +632,9 @@ class poisson_IIM_solver(object):
             zs=np.array(self.pde.mesh.z_inf, dtype=np.float64), zf=np.array(self.pde.mesh.z_sup, dtype=np.float64), n=np.array(self.pde.mesh.n_z, dtype=np.int32), nbdcnd=np.array(1, dtype=np.int32), bdzs=BDZS, bdzf=BDZF,
             elmbda=np.array(0, dtype=np.float64), f=self.u, pertrb=PERTRB, ierror=IERROR, w=W)
         #"""
-        print("P, E:", PERTRB, IERROR)
+        #print("P, E:", PERTRB, IERROR)
 
-
+        """ Error plot.
         N = self.pde.mesh.n_x//2
         res = self.u[N, :, :] - self.pde.u_exact[N, :, :]
         Y, Z = np.meshgrid(self.pde.mesh.ys, self.pde.mesh.zs)
@@ -637,7 +649,7 @@ class poisson_IIM_solver(object):
 
         fig.colorbar(surf, shrink=0.5, aspect=5)
         plt.show()
-
+        """
 
     def __error_estimate(self, dis_select=True, dis_multiplier=1.5):
         for i in range(self.pde.mesh.n_x + 1):
@@ -646,7 +658,7 @@ class poisson_IIM_solver(object):
                     if (dis_select or np.abs(self.pde.interface.phi[i, j, k]) <= dis_multiplier*self.pde.mesh.h_x):
                         self.error = np.max([self.error, np.abs(self.u[i, j, k] - self.pde.u_exact[i, j, k])])
 
-        print(self.error)
+        print("MAX ERROR:", self.error)
 
 
     def __phi_derivs1_trilinear(self, x, y, z, i, j, k):
@@ -704,7 +716,7 @@ class poisson_IIM_solver(object):
         
         return [phi_xx, phi_xy, phi_xz, phi_yx, phi_yy, phi_yz, phi_zx, phi_zy, phi_zz]
 
-mesh = mesh_uniform(multiplier=4)
+mesh = mesh_uniform(multiplier=1)
 inte = interface_ellipsoid(0.6, 0.5, np.sqrt(2.0)/4.0, mesh)
 a = poisson_scc(inte, mesh)
 scc = poisson_IIM_solver(a)
