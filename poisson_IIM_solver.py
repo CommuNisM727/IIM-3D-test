@@ -716,11 +716,12 @@ class poisson_IIM_solver(object):
         
         return [phi_xx, phi_xy, phi_xz, phi_yx, phi_yy, phi_yz, phi_zx, phi_zy, phi_zz]
 
+""" MODULE TEST
 mesh = mesh_uniform(multiplier=1)
 inte = interface_ellipsoid(0.6, 0.5, np.sqrt(2.0)/4.0, mesh)
 a = poisson_scc(inte, mesh)
 scc = poisson_IIM_solver(a)
-
+"""
 
 ### MODIFY HISTORY---
 ### 20.12.2020      FILE CREATED.           ---727
