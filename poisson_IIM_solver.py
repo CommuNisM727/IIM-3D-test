@@ -379,10 +379,10 @@ class poisson_IIM_solver(object):
     
         self.irr_jump_u[index] = self.pde.jump_u(x, y, z)
         self.irr_jump_f[index] = self.pde.jump_f(x, y, z)
-        self.irr_jump_u_n[index] = self.pde.jump_u_n(x, y, z)
-        #self.irr_jump_u_n[index] = self.pde.jump_u_x(x, y, z) * phi_x_nm + self.pde.jump_u_y(x, y, z) * phi_y_nm + self.pde.jump_u_z(x, y, z) * phi_z_nm
+        #self.irr_jump_u_n[index] = self.pde.jump_u_n(x, y, z)
+        self.irr_jump_u_n[index] = self.pde.jump_u_x(x, y, z) * phi_x_nm + self.pde.jump_u_y(x, y, z) * phi_y_nm + self.pde.jump_u_z(x, y, z) * phi_z_nm
 
-    def __irregular_projection_jump(self, index, i, j, k, norm_l1=3, norm_l2=2.4, n_points=18):
+    def __irregular_projection_jump(self, index, i, j, k, norm_l1=3, norm_l2=2.4, n_points=24):
         """ A module for computing [u_{nn}] using least square.
 
         Args:
@@ -403,8 +403,8 @@ class poisson_IIM_solver(object):
         y = self.irr_proj[index, 1]
         z = self.irr_proj[index, 2]
 
-        neighbours = np.ndarray(shape=(n_points, ), dtype=np.int)
-        distances = np.ndarray(shape=(n_points, ), dtype=np.float64)
+        neighbours = np.ndarray(shape=((int(2*norm_l1))**3, ), dtype=np.int)
+        distances = np.ndarray(shape=((int(2*norm_l1))**3, ), dtype=np.float64)
         
         n = 0
         for offset_i in range(-norm_l1, norm_l1 + 1):
@@ -415,7 +415,8 @@ class poisson_IIM_solver(object):
                     j_ = j + offset_j
                     k_ = k + offset_k
 
-                    if ((n < n_points) and (self.pde.interface.irr[i_, j_, k_] > 0)):
+                    #if ((n < n_points) and (self.pde.interface.irr[i_, j_, k_] > 0)):
+                    if (self.pde.interface.irr[i_, j_, k_] > 0):
                         index_ = self.pde.interface.irr[i_, j_, k_]
                         x_ = self.irr_proj[index_, 0]
                         y_ = self.irr_proj[index_, 1]
@@ -427,18 +428,22 @@ class poisson_IIM_solver(object):
                             distances[n] = dist
                             n = n + 1
         
+        #""" Meaningless since least square approximation is calculated from package module.
+        neighbours = neighbours[:n]
+        distances = distances[:n]
+        
         order = np.argsort(distances)
         neighbours = neighbours[order]
+        neighbours = neighbours[:n_points]
+        #"""
 
         neighbour_jump_u = np.ndarray(shape=(n_points, ), dtype=np.float64)
         
         # n_features (fixed) * n_points.
         n_features = 15
-        neighbour_dict = np.ndarray(shape=(n_features, n_points), dtype=np.float64)
         neighbour_dict = np.ndarray(shape=(n_points, n_features), dtype=np.float64)
-        
 
-        for n_ in range(n):
+        for n_ in range(n_points):
             index_ = neighbours[n_]
             dx = self.irr_proj[index_, 0] - x
             dy = self.irr_proj[index_, 1] - y
@@ -448,7 +453,7 @@ class poisson_IIM_solver(object):
             Eta = self.irr_Eta[index, 0] * dx + self.irr_Eta[index, 1] * dy + self.irr_Eta[index, 2] * dz
             Tau = self.irr_Tau[index, 0] * dx + self.irr_Tau[index, 1] * dy + self.irr_Tau[index, 2] * dz
 
-            # o0
+            # o0 (Not removed for future possible modification)
             neighbour_dict[n_, 0] = 0.0 #1.0
             # o1
             neighbour_dict[n_, 1] = Eta
@@ -468,16 +473,26 @@ class poisson_IIM_solver(object):
             neighbour_dict[n_, 12] = Eta*Eta*Tau*Tau
             neighbour_dict[n_, 13] = Eta*Tau*Tau*Tau
             neighbour_dict[n_, 14] = Tau*Tau*Tau*Tau
-            
         
-        #derivs = np.dot(np.linalg.pinv(neighbour_dict), neighbour_jump_u)
-        derivs = np.linalg.lstsq(neighbour_dict, neighbour_jump_u, rcond=1e-4)[0]
+
+        derivs = np.linalg.lstsq(neighbour_dict, neighbour_jump_u)[0]
+        
+        """ Directly calling least square module.
+        #ex = np.floor(np.log2(self.pde.mesh.multiplier) / 2) + 4
+        #ex = 3.5 + self.pde.mesh.multiplier / 2
+        #ex = 3.0
+        #print("10^-", ex)
+        #U, S, VH = np.linalg.svd(neighbour_dict, full_matrices=True)
+        #print(np.shape(S))
+        #derivs = np.linalg.lstsq(neighbour_dict, neighbour_jump_u, rcond=np.power(10, -ex))[0]
+        
+        #U, S, VH = np.linalg.svd(neighbour_dict, full_matrices=True)
+    
+        # Error checking.
         err1 = derivs[3] - self.pde.jump_u_nn(x, y, z, self.irr_Eta[index, 0], self.irr_Eta[index, 1], self.irr_Eta[index, 2])
         err2 = derivs[5] - self.pde.jump_u_nn(x, y, z, self.irr_Tau[index, 0], self.irr_Tau[index, 1], self.irr_Tau[index, 2])
-        self.irr_jump_u_nn[index] = self.irr_jump_f[index]  \
-        - self.irr_Kappa[index] * self.irr_jump_u_n[index]  \
-        - (derivs[3] + derivs[5])
-        #self.irr_jump_u_nn[index] = self.pde.jump_u_nn(x, y, z, self.irr_Xi[index, 0], self.irr_Xi[index, 1], self.irr_Xi[index, 2])
+        
+        self.irr_jump_u_nn[index] = self.pde.jump_u_nn(x, y, z, self.irr_Xi[index, 0], self.irr_Xi[index, 1], self.irr_Xi[index, 2])
 
         #print(derivs[0] - self.irr_jump_u[index])
         #print(err1 + err2)
@@ -485,6 +500,22 @@ class poisson_IIM_solver(object):
         Xi =  self.irr_Xi[index]
         Eta = self.irr_Eta[index]
         Tau = self.irr_Tau[index]
+
+        derivs[3] = 0.0
+        derivs[5] = 0.0
+        t = np.dot(np.transpose(U), neighbour_jump_u)
+        for i in range(S.shape[0]):
+            sigma = S[i]
+            if (sigma > 1e-10):
+                derivs[3] = derivs[3] + VH[i, 3] * t[i]/ sigma
+                derivs[5] = derivs[5] + VH[i, 5] * t[i]/ sigma
+        """
+        
+        self.irr_jump_u_nn[index] = self.irr_jump_f[index]  \
+        - self.irr_Kappa[index] * self.irr_jump_u_n[index]  \
+        - (derivs[3] + derivs[5])
+
+
 
     def __irregular_projection_corr(self, index, i, j, k):
         """ A module for computing corrections.
@@ -674,6 +705,11 @@ class poisson_IIM_solver(object):
         return [phi_xx, phi_xy, phi_xz, phi_yx, phi_yy, phi_yz, phi_zx, phi_zy, phi_zz]
 
 mesh = mesh_uniform(multiplier=4)
-inte = interface_ellipsoid(0.6, 0.5, 0.4, mesh)
+inte = interface_ellipsoid(0.6, 0.5, np.sqrt(2.0)/4.0, mesh)
 a = poisson_scc(inte, mesh)
 scc = poisson_IIM_solver(a)
+
+
+### MODIFY HISTORY---
+### 20.12.2020      FILE CREATED.           ---727
+###-----------------------------------------------------------------------
