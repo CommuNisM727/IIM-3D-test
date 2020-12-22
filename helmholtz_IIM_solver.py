@@ -24,6 +24,7 @@ class helmholtz_IIM_solver(object):
     Attributes:
         pde         (pde object):       A poisson or helmholtz equation.
 
+        rhs_corr    (1D-array):         Right-hand side correction terms on irregular points.
         irr_corr    (1D-array):         Correction terms on irregular points.
         u           (3D-array):         Numerical solution to the equation.
         error       (double):           Numerical error to the ground-truth. 
@@ -42,6 +43,7 @@ class helmholtz_IIM_solver(object):
 
         self.pde = pde
         
+        self.rhs_corr = np.zeros(shape=(self.pde.interface.n_irr + 1, ), dtype=np.float64)
         self.irr_corr = np.zeros(shape=(self.pde.interface.n_irr + 1, ), dtype=np.float64)
         self.u = np.asfortranarray(np.zeros(shape=(self.pde.mesh.n_x + 1, self.pde.mesh.n_y + 1, self.pde.mesh.n_z + 1), dtype=np.float64, order='F'))
         self.error = 0.0
@@ -79,50 +81,52 @@ class helmholtz_IIM_solver(object):
         + d * self.pde.irr_jump_u_n[index]  \
         + 0.5*d*d * self.pde.irr_jump_u_nn[index]
 
+        self.irr_corr[index] = corr
+
         # x-.
         if (self.pde.interface.phi[i, j, k] <= 0 and self.pde.interface.phi[i - 1, j, k] > 0):
             index_ = self.pde.interface.irr[i - 1, j, k]
-            self.irr_corr[index_] = self.irr_corr[index_] + corr / self.pde.mesh.h_x**2
+            self.rhs_corr[index_] = self.rhs_corr[index_] + corr / self.pde.mesh.h_x**2
         if (self.pde.interface.phi[i, j, k] > 0 and self.pde.interface.phi[i - 1, j, k] <= 0):
             index_ = self.pde.interface.irr[i - 1, j, k]
-            self.irr_corr[index_] = self.irr_corr[index_] - corr / self.pde.mesh.h_x**2
+            self.rhs_corr[index_] = self.rhs_corr[index_] - corr / self.pde.mesh.h_x**2
         # x+.
         if (self.pde.interface.phi[i, j, k] <= 0 and self.pde.interface.phi[i + 1, j, k] > 0):
             index_ = self.pde.interface.irr[i + 1, j, k]
-            self.irr_corr[index_] = self.irr_corr[index_] + corr / self.pde.mesh.h_x**2
+            self.rhs_corr[index_] = self.rhs_corr[index_] + corr / self.pde.mesh.h_x**2
         if (self.pde.interface.phi[i, j, k] > 0 and self.pde.interface.phi[i + 1, j, k] <= 0):
             index_ = self.pde.interface.irr[i + 1, j, k]
-            self.irr_corr[index_] = self.irr_corr[index_] - corr / self.pde.mesh.h_x**2
+            self.rhs_corr[index_] = self.rhs_corr[index_] - corr / self.pde.mesh.h_x**2
         
         # y-.
         if (self.pde.interface.phi[i, j, k] <= 0 and self.pde.interface.phi[i, j - 1, k] > 0):
             index_ = self.pde.interface.irr[i, j - 1, k]
-            self.irr_corr[index_] = self.irr_corr[index_] + corr / self.pde.mesh.h_y**2
+            self.rhs_corr[index_] = self.rhs_corr[index_] + corr / self.pde.mesh.h_y**2
         if (self.pde.interface.phi[i, j, k] > 0 and self.pde.interface.phi[i, j - 1, k] <= 0):
             index_ = self.pde.interface.irr[i, j - 1, k]
-            self.irr_corr[index_] = self.irr_corr[index_] - corr / self.pde.mesh.h_y**2
+            self.rhs_corr[index_] = self.rhs_corr[index_] - corr / self.pde.mesh.h_y**2
         # y+.
         if (self.pde.interface.phi[i, j, k] <= 0 and self.pde.interface.phi[i, j + 1, k] > 0):
             index_ = self.pde.interface.irr[i, j + 1, k]
-            self.irr_corr[index_] = self.irr_corr[index_] + corr / self.pde.mesh.h_y**2
+            self.rhs_corr[index_] = self.rhs_corr[index_] + corr / self.pde.mesh.h_y**2
         if (self.pde.interface.phi[i, j, k] > 0 and self.pde.interface.phi[i, j + 1, k] <= 0):
             index_ = self.pde.interface.irr[i, j + 1, k]
-            self.irr_corr[index_] = self.irr_corr[index_] - corr / self.pde.mesh.h_y**2
+            self.rhs_corr[index_] = self.rhs_corr[index_] - corr / self.pde.mesh.h_y**2
         
         # z-.
         if (self.pde.interface.phi[i, j, k] <= 0 and self.pde.interface.phi[i, j, k - 1] > 0):
             index_ = self.pde.interface.irr[i, j, k - 1]
-            self.irr_corr[index_] = self.irr_corr[index_] + corr / self.pde.mesh.h_z**2
+            self.rhs_corr[index_] = self.rhs_corr[index_] + corr / self.pde.mesh.h_z**2
         if (self.pde.interface.phi[i, j, k] > 0 and self.pde.interface.phi[i, j, k - 1] <= 0):
             index_ = self.pde.interface.irr[i, j, k - 1]
-            self.irr_corr[index_] = self.irr_corr[index_] - corr / self.pde.mesh.h_z**2
+            self.rhs_corr[index_] = self.rhs_corr[index_] - corr / self.pde.mesh.h_z**2
         # z+.
         if (self.pde.interface.phi[i, j, k] <= 0 and self.pde.interface.phi[i, j, k + 1] > 0):
             index_ = self.pde.interface.irr[i, j, k + 1]
-            self.irr_corr[index_] = self.irr_corr[index_] + corr / self.pde.mesh.h_z**2
+            self.rhs_corr[index_] = self.rhs_corr[index_] + corr / self.pde.mesh.h_z**2
         if (self.pde.interface.phi[i, j, k] > 0 and self.pde.interface.phi[i, j, k + 1] <= 0):
             index_ = self.pde.interface.irr[i, j, k + 1]
-            self.irr_corr[index_] = self.irr_corr[index_] - corr / self.pde.mesh.h_z**2
+            self.rhs_corr[index_] = self.rhs_corr[index_] - corr / self.pde.mesh.h_z**2
         
     def __solve(self):
         for i in range(self.pde.mesh.n_x + 1):
@@ -132,7 +136,7 @@ class helmholtz_IIM_solver(object):
                     self.u[i, j, k] = self.pde.f_exact[i, j, k]
                     
                     if (self.pde.interface.irr[i, j, k] > 0):
-                        self.u[i, j, k] = self.u[i, j, k] - self.irr_corr[self.pde.interface.irr[i, j, k]]
+                        self.u[i, j, k] = self.u[i, j, k] - self.rhs_corr[self.pde.interface.irr[i, j, k]]
                     
                     # Boundary conditions.
                     if (i == 0 or i == self.pde.mesh.n_x or
@@ -191,12 +195,12 @@ class helmholtz_IIM_solver(object):
 
         print("MAX ERROR:", self.error)
 
-#""" MODULE TEST
-mesh = mesh_uniform(multiplier=2)
+""" MODULE TEST
+mesh = mesh_uniform(multiplier=1)
 inte = interface_ellipsoid(0.6, 0.5, np.sqrt(2.0)/4.0, mesh)
-a = helmholtz_scc(inte, mesh, lambda_c=2)
+a = helmholtz_scc(inte, mesh, lambda_c=-5)
 scc = helmholtz_IIM_solver(a)
-#"""
+"""
 
 ### MODIFY HISTORY---
 ### 22.12.2020      FILE CREATED.           ---727

@@ -3,17 +3,17 @@ import numpy as np
 from utils.mesh import *
 from utils.interface import *
 ###-----------------------------------------------------------------------------------
-### FILE NAME:      helmholtz_scc.py
+### FILE NAME:      helmholtz_scc_aug0.py
 ### CREATE DATE:    DEC. 2020.
 ### AUTHOR:         Yuan-Tian (CommuNisM727)
 ###-----------------------------------------------------------------------------------
-### DESCRIPTION:    A simple 3D helmholtz equation test case for 3D IIM solver.
+### DESCRIPTION:    A 3D augmented helmholtz equation test case for 3D IIM solver.
 ### NOTED:          A few more simply-constructed test case may be added later,
 ###                 and this file itself may be renamed.
 ###-----------------------------------------------------------------------------------
 
 
-class helmholtz_scc(object):
+class helmholtz_scc_aug0(object):
     """ A simple 3D helmholtz equation [\delta u + \lambda_c u = f] (u = sin*cos*cos).
 
     Attributes:
@@ -25,6 +25,7 @@ class helmholtz_scc(object):
 
         u_exact         (3D-array):         The exact solution of u.
         f_exact         (3D-array):         The exact(un-corrected) right hand sides.
+        u_bound         (1D-array):         The exact boundary projection points.
 
         irr_jump_u      (1D-array):         An array of [u].
         irr_jump_f      (1D-array):         An array of [f].
@@ -33,7 +34,7 @@ class helmholtz_scc(object):
 
     """
 
-    def __init__(self, interface, mesh, lambda_c=1):
+    def __init__(self, interface, mesh, jump_u_n, lambda_c=1):
         """ Initialization of class 'poisson_scc'
             'u_exact' and 'f_exact' are computed.
 
@@ -59,6 +60,7 @@ class helmholtz_scc(object):
         self.irr_jump_u = np.ndarray(shape=(interface.n_irr + 1, ), dtype=np.float64)
         self.irr_jump_f = np.ndarray(shape=(interface.n_irr + 1, ), dtype=np.float64)
         self.irr_jump_u_n = np.ndarray(shape=(interface.n_irr + 1, ), dtype=np.float64)
+        self.irr_jump_u_nT = np.ndarray(shape=(interface.n_irr + 1, ), dtype=np.float64)
         self.irr_jump_u_nn = np.ndarray(shape=(interface.n_irr + 1, ), dtype=np.float64)
 
         for i in range(mesh.n_x + 1):
@@ -70,15 +72,48 @@ class helmholtz_scc(object):
                     if (self.interface.irr[i, j, k] > 0):
                         self.__irregular_projection_jump1(self.interface.irr[i, j, k])
 
-        for i in range(mesh.n_x + 1):
-            for j in range(mesh.n_y + 1):
-                for k in range(mesh.n_z + 1):
+        self.set_jump_u_n(jump_u_n)
+        
+        return
+
+    def set_jump_u_n(self, jump_u_n):
+        self.irr_jump_u[0] = 0
+        for i in range(1, self.interface.n_irr + 1):
+            self.irr_jump_u_n[i] = jump_u_n[i - 1]
+
+        for i in range(self.mesh.n_x + 1):
+            for j in range(self.mesh.n_y + 1):
+                for k in range(self.mesh.n_z + 1):
                     if (self.interface.irr[i, j, k] > 0):
                         self.__irregular_projection_jump2(self.interface.irr[i, j, k], i, j, k)
         
 
+    def get_jump_u_b(self, u_corr):
+        jump_u_b = np.zeros(shape=(self.interface.n_irr + 1, 1), dtype=np.float64)
+
+        for i in range(self.mesh.n_x + 1):
+            for j in range(self.mesh.n_y + 1):
+                for k in range(self.mesh.n_z + 1):
+                    if (self.interface.irr[i, j, k] > 0):
+                        index = self.interface.irr[i, j, k]
+                        x = self.interface.irr_proj[index, 0]
+                        y = self.interface.irr_proj[index, 1]
+                        z = self.interface.irr_proj[index, 2]
+
+                        i = int((x - self.mesh.x_inf) / self.mesh.h_x)
+                        j = int((y - self.mesh.y_inf) / self.mesh.h_y)
+                        k = int((z - self.mesh.z_inf) / self.mesh.h_z)
+
+                        Pn_interp_3d_partial = lambda arr, n: Pn_interp_3d(x, y, z, 
+                                                self.mesh.xs, self.mesh.ys, self.mesh.zs,
+                                                i - int((n - 1) / 2), j - int((n - 1) / 2), k - int((n - 1) / 2),
+                                                arr, n)
+                        # Tricubic interpolating (4^3 points).
+                        jump_u_b[index - 1] = Pn_interp_3d_partial(u_corr, 2)
+
+                        pass
+
         return
-    
 
     """ 'u_exact' and 'f_exact' on one point are computed.
 
@@ -90,12 +125,12 @@ class helmholtz_scc(object):
         f(x_i, y_j, z_k) = (\lambda_c - 3)*cos(x_i)*sin(y_j)*sin(z_k) if outsides the interface, 0 otherwise.
     """
     def __u_exact(self, i, j, k):
-        if (self.interface.phi[i, j, k] >= 0):
+        if (self.interface.phi[i, j, k] <= 0):
             return np.cos(self.mesh.xs[i]) * np.sin(self.mesh.ys[j]) * np.sin(self.mesh.zs[k])
         return 0.0
 
     def __f_exact(self, i, j, k): 
-        if (self.interface.phi[i, j, k] >= 0):
+        if (self.interface.phi[i, j, k] <= 0):
             return (self.lambda_c - 3.0) * np.cos(self.mesh.xs[i]) * np.sin(self.mesh.ys[j]) * np.sin(self.mesh.zs[k])
         return 0.0
     
@@ -116,14 +151,14 @@ class helmholtz_scc(object):
         
         self.irr_jump_u[index] = self.jump_u(x, y, z)
         self.irr_jump_f[index] = self.jump_f(x, y, z)
-        self.irr_jump_u_n[index] = \
+        self.irr_jump_u_nT[index] = \
             self.jump_u_x(x, y, z) * self.interface.irr_Xi[index, 0] \
         +   self.jump_u_y(x, y, z) * self.interface.irr_Xi[index, 1] \
         +   self.jump_u_z(x, y, z) * self.interface.irr_Xi[index, 2]
-        
+
         return
 
-    def __irregular_projection_jump2(self, index, i, j, k, norm_l1=3, norm_l2=2.4, n_points=12):
+    def __irregular_projection_jump2(self, index, i, j, k, norm_l1=3, norm_l2=2.4, n_points=16):
         """ A module for computing [u_{nn}] using least square.
 
         Args:
@@ -224,6 +259,7 @@ class helmholtz_scc(object):
         - self.interface.irr_Kappa[index] * self.irr_jump_u_n[index]    \
         - (derivs[3] + derivs[5])
 
+        self.irr_jump_u_nn[index] = self.jump_u_nn(x, y, z, self.interface.irr_Xi[index, 0], self.interface.irr_Xi[index, 1], self.interface.irr_Xi[index, 2])
         return
 
     """ All jump conditions on one point are computed.
@@ -238,14 +274,14 @@ class helmholtz_scc(object):
         Jump conditions (from neg. to pos.) [u], [u_x], [u_y], [u_z], [u_n], [f] on the interface.    
     """
     def jump_u(self, x, y, z):
-        return np.cos(x) * np.sin(y) * np.sin(z)
+        return -np.cos(x) * np.sin(y) * np.sin(z)
 
     def jump_u_x(self, x, y, z):
-        return -np.sin(x) * np.sin(y) * np.sin(z)
+        return np.sin(x) * np.sin(y) * np.sin(z)
     def jump_u_y(self, x, y, z):
-        return np.cos(x) * np.cos(y) * np.sin(z)
+        return -np.cos(x) * np.cos(y) * np.sin(z)
     def jump_u_z(self, x, y, z):
-        return np.cos(x) * np.sin(y) * np.cos(z)
+        return -np.cos(x) * np.sin(y) * np.cos(z)
     def jump_u_n(self, x, y, z):
         norm = np.sqrt(x**2 / self.interface.a**4 + y**2 / self.interface.b**4 + z**2 / self.interface.c**4)
         normal_x = x/self.interface.a**2 / norm
@@ -271,7 +307,7 @@ class helmholtz_scc(object):
         +      n_z * (u_zx * n_x + u_zy * n_y + u_zz * n_z)
 
     def jump_f(self, x, y, z):
-        return (self.lambda_c - 3.0) * np.cos(x) * np.sin(y) * np.sin(z)
+        return -(self.lambda_c - 3.0) * np.cos(x) * np.sin(y) * np.sin(z)
 
 
 """ MODULE TESTS
@@ -282,5 +318,4 @@ a = helmholtz_scc(inte, mesh)
 
 ### MODIFY HISTORY---
 ### 22.12.2020      FILE CREATED.           ---727
-### 22.12.2020      Ver. 0.2 CREATED.       ---727
 ###-----------------------------------------------------------------------
