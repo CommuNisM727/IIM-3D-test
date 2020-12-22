@@ -7,12 +7,12 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm
 ###-----------------------------------------------------------------------------------
-### FILE NAME:      poisson_IIM_augmented_solver.py
+### FILE NAME:      gmres_test.py
 ### CREATE DATE:    DEC. 2020.
 ### AUTHOR:         Yuan-Tian (CommuNisM727)
 ###-----------------------------------------------------------------------------------
-### DESCRIPTION:    A 3D IIM augmented solver.
-### NOTED:          Might be split into multiple modules.
+### DESCRIPTION:    A GMRES test.
+### NOTED:          Might be deleted
 ###-----------------------------------------------------------------------------------
 
 """
