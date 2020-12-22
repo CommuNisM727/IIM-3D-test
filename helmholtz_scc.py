@@ -14,15 +14,22 @@ from utils.interface import *
 
 
 class helmholtz_scc(object):
-    """ A simple 3D helmholtz equation (sin*cos*cos).
+    """ A simple 3D helmholtz equation [\delta u + \lambda_c u = f] (u = sin*cos*cos).
 
     Attributes:
-        mesh        (mesh_uniform):     An uniform mesh in 3D cartesian coordinates 
-                                        indicating the computational area.
-        interface   (interface object): An interface built on same mesh object indicating
-                                        where the jumps [u] and [u_n] occur.
-        u_exact     (3D-array):         The exact solution of u.
-        f_exact     (3D-array):         The exact(un-corrected) right hand sides.
+        mesh            (mesh_uniform):     An uniform mesh in 3D cartesian coordinates 
+                                            indicating the computational area.
+        interface       (interface object): An interface built on same mesh object indicating
+                                            where the jumps [u] and [u_n] occur.
+        lambda_c        (real):             The coefficient \lambda_c.
+
+        u_exact         (3D-array):         The exact solution of u.
+        f_exact         (3D-array):         The exact(un-corrected) right hand sides.
+
+        irr_jump_u      (1D-array):         An array of [u].
+        irr_jump_f      (1D-array):         An array of [f].
+        irr_jump_u_n    (1D-array):         An array of [u_n].
+        irr_jump_u_nn   (1D-array):         An array of [u_{nn}].
 
     """
 
@@ -35,10 +42,13 @@ class helmholtz_scc(object):
                                             indicating the computational area.
             interface   (interface object): An interface built on same mesh object indicating
                                             where the jumps [u] and [u_n] occur.
+            lambda_c    (real):             The coefficient \lambda_c.
+
         Returns:
             None
 
         """
+
         self.mesh = mesh
         self.u_exact = np.ndarray(shape=(mesh.n_x + 1, mesh.n_y + 1, mesh.n_z + 1), dtype=np.float64)
         self.f_exact = np.ndarray(shape=(mesh.n_x + 1, mesh.n_y + 1, mesh.n_z + 1), dtype=np.float64)
@@ -46,11 +56,27 @@ class helmholtz_scc(object):
         self.interface = interface
         self.lambda_c = lambda_c
 
+        self.irr_jump_u = np.ndarray(shape=(interface.n_irr + 1, ), dtype=np.float64)
+        self.irr_jump_f = np.ndarray(shape=(interface.n_irr + 1, ), dtype=np.float64)
+        self.irr_jump_u_n = np.ndarray(shape=(interface.n_irr + 1, ), dtype=np.float64)
+        self.irr_jump_u_nn = np.ndarray(shape=(interface.n_irr + 1, ), dtype=np.float64)
+
         for i in range(mesh.n_x + 1):
             for j in range(mesh.n_y + 1):
                 for k in range(mesh.n_z + 1):
                     self.u_exact[i, j, k] = self.__u_exact(i, j, k)
                     self.f_exact[i, j, k] = self.__f_exact(i, j, k)
+
+                    if (self.interface.irr[i, j, k] > 0):
+                        self.__irregular_projection_jump1(self.interface.irr[i, j, k])
+
+        for i in range(mesh.n_x + 1):
+            for j in range(mesh.n_y + 1):
+                for k in range(mesh.n_z + 1):
+                    if (self.interface.irr[i, j, k] > 0):
+                        self.__irregular_projection_jump2(self.interface.irr[i, j, k], i, j, k)
+        
+
         return
     
 
@@ -73,6 +99,130 @@ class helmholtz_scc(object):
             return (self.lambda_c - 3.0) * np.cos(self.mesh.xs[i]) * np.sin(self.mesh.ys[j]) * np.sin(self.mesh.zs[k])
         return 0.0
     
+    def __irregular_projection_jump1(self, index):
+        """ A module for computing and saving the basic information of irregular point projection on the interface.
+
+        Args:
+            index       (integer>0):    The index of irregular point.
+
+        Returns:
+            None
+
+        """
+
+        x = self.interface.irr_proj[index, 0]
+        y = self.interface.irr_proj[index, 1]
+        z = self.interface.irr_proj[index, 2]
+        
+        self.irr_jump_u[index] = self.jump_u(x, y, z)
+        self.irr_jump_f[index] = self.jump_f(x, y, z)
+        self.irr_jump_u_n[index] = \
+            self.jump_u_x(x, y, z) * self.interface.irr_Xi[index, 0] \
+        +   self.jump_u_y(x, y, z) * self.interface.irr_Xi[index, 1] \
+        +   self.jump_u_z(x, y, z) * self.interface.irr_Xi[index, 2]
+
+        return
+
+    def __irregular_projection_jump2(self, index, i, j, k, norm_l1=3, norm_l2=2.4, n_points=12):
+        """ A module for computing [u_{nn}] using least square.
+
+        Args:
+            i, j, k     (integer):      The index of coords of irregular point.
+            norm_l1     (real):         Neighbour search |area|_1 < norm_l1 * h.
+            norm_l2     (real):         Neighbour search |area|_2 < norm_l2 * h.
+            n_points    (integer):      Number of neighbour points used.
+
+        Returns:
+            None
+
+        Computation:
+            [u_{nn}] are assigned here. ([u_{nn}] = [f_n] - \Kappa [u_n] - [u_{surface Laplacian}])
+
+        """
+
+        x = self.interface.irr_proj[index, 0]
+        y = self.interface.irr_proj[index, 1]
+        z = self.interface.irr_proj[index, 2]
+        
+        neighbours = np.ndarray(shape=((int(2*norm_l1))**3, ), dtype=np.int)
+        distances = np.ndarray(shape=((int(2*norm_l1))**3, ), dtype=np.float64)
+        
+        n = 0
+        for offset_i in range(-norm_l1, norm_l1 + 1):
+            for offset_j in range(-norm_l1, norm_l1 + 1):
+                for offset_k in range(-norm_l1, norm_l1 + 1):
+                    # Neighbour point index.
+                    i_ = i + offset_i
+                    j_ = j + offset_j
+                    k_ = k + offset_k
+
+                    if (self.interface.irr[i_, j_, k_] > 0):
+                        index_ = self.interface.irr[i_, j_, k_]
+                        x_ = self.interface.irr_proj[index_, 0]
+                        y_ = self.interface.irr_proj[index_, 1]
+                        z_ = self.interface.irr_proj[index_, 2]
+
+                        dist = np.sqrt((x-x_)**2 + (y-y_)**2 + (z-z_)**2)
+                        if (dist <= norm_l2*self.mesh.h_x):
+                            neighbours[n] = index_
+                            distances[n] = dist
+                            n = n + 1
+        
+        # Selecting the nearest 'n_points' neighbours.
+        neighbours = neighbours[:n]
+        distances = distances[:n]
+        
+        order = np.argsort(distances)
+        neighbours = neighbours[order]
+        neighbours = neighbours[:n_points]
+
+        neighbour_jump_u = np.ndarray(shape=(n_points, ), dtype=np.float64)
+        
+        # n_features (fixed) * n_points.
+        n_features = 15
+        neighbour_dict = np.ndarray(shape=(n_points, n_features), dtype=np.float64)
+
+        for n_ in range(n_points):
+            index_ = neighbours[n_]
+            dx = self.interface.irr_proj[index_, 0] - x
+            dy = self.interface.irr_proj[index_, 1] - y
+            dz = self.interface.irr_proj[index_, 2] - z
+            
+            neighbour_jump_u[n_] = self.irr_jump_u[index_] - self.irr_jump_u[index]
+            Eta = self.interface.irr_Eta[index, 0] * dx \
+                + self.interface.irr_Eta[index, 1] * dy \
+                + self.interface.irr_Eta[index, 2] * dz
+            Tau = self.interface.irr_Tau[index, 0] * dx \
+                + self.interface.irr_Tau[index, 1] * dy \
+                + self.interface.irr_Tau[index, 2] * dz
+
+            # o0 (Not removed for future possible modification)
+            neighbour_dict[n_, 0] = 0.0 #1.0
+            # o1
+            neighbour_dict[n_, 1] = Eta
+            neighbour_dict[n_, 2] = Tau
+            # o2
+            neighbour_dict[n_, 3] = 0.5*Eta*Eta #
+            neighbour_dict[n_, 4] = Eta*Tau
+            neighbour_dict[n_, 5] = 0.5*Tau*Tau #
+            # o3
+            neighbour_dict[n_, 6] = Eta*Eta*Eta
+            neighbour_dict[n_, 7] = Eta*Eta*Tau
+            neighbour_dict[n_, 8] = Eta*Tau*Tau
+            neighbour_dict[n_, 9] = Tau*Tau*Tau
+            # o4
+            neighbour_dict[n_, 10] = Eta*Eta*Eta*Eta
+            neighbour_dict[n_, 11] = Eta*Eta*Eta*Tau
+            neighbour_dict[n_, 12] = Eta*Eta*Tau*Tau
+            neighbour_dict[n_, 13] = Eta*Tau*Tau*Tau
+            neighbour_dict[n_, 14] = Tau*Tau*Tau*Tau
+        
+        derivs = np.linalg.lstsq(neighbour_dict, neighbour_jump_u, rcond=1e-10)[0]
+        
+        self.irr_jump_u_nn[index] = self.irr_jump_f[index]  \
+        - self.interface.irr_Kappa[index] * self.irr_jump_u_n[index]  \
+        - (derivs[3] + derivs[5])
+        return
 
     """ All jump conditions on one point are computed.
 
@@ -125,9 +275,10 @@ class helmholtz_scc(object):
 """ MODULE TESTS
 mesh = mesh_uniform()
 inte = interface_ellipsoid(0.5, 0.5, 0.2, mesh)
-a = poisson_scc(inte, mesh)
+a = helmholtz_scc(inte, mesh)
 """
 
 ### MODIFY HISTORY---
 ### 22.12.2020      FILE CREATED.           ---727
+### 22.12.2020      Ver. 0.2 CREATED.       ---727
 ###-----------------------------------------------------------------------
