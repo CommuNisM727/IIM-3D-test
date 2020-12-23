@@ -35,7 +35,7 @@ class helmholtz_scc_aug0(object):
     """
 
     def __init__(self, interface, mesh, jump_u_n, lambda_c=1):
-        """ Initialization of class 'poisson_scc'
+        """ Initialization of class 'helmholtz_scc_aug0'
             'u_exact' and 'f_exact' are computed.
 
         Args:
@@ -77,9 +77,11 @@ class helmholtz_scc_aug0(object):
         return
 
     def set_jump_u_n(self, jump_u_n):
-        self.irr_jump_u[0] = 0
+        #self.irr_jump_u_n[0] = 0
         for i in range(1, self.interface.n_irr + 1):
             self.irr_jump_u_n[i] = jump_u_n[i - 1]
+            #self.irr_jump_u_n[i] = self.irr_jump_u_nT[i]
+            pass
 
         for i in range(self.mesh.n_x + 1):
             for j in range(self.mesh.n_y + 1):
@@ -155,7 +157,7 @@ class helmholtz_scc_aug0(object):
             self.jump_u_x(x, y, z) * self.interface.irr_Xi[index, 0] \
         +   self.jump_u_y(x, y, z) * self.interface.irr_Xi[index, 1] \
         +   self.jump_u_z(x, y, z) * self.interface.irr_Xi[index, 2]
-
+        #self.irr_jump_u_n[index] = self.irr_jump_u_nT[index]
         return
 
     def __irregular_projection_jump2(self, index, i, j, k, norm_l1=3, norm_l2=2.4, n_points=16):
@@ -258,8 +260,7 @@ class helmholtz_scc_aug0(object):
         - self.lambda_c * self.irr_jump_u[index]                        \
         - self.interface.irr_Kappa[index] * self.irr_jump_u_n[index]    \
         - (derivs[3] + derivs[5])
-
-        self.irr_jump_u_nn[index] = self.jump_u_nn(x, y, z, self.interface.irr_Xi[index, 0], self.interface.irr_Xi[index, 1], self.interface.irr_Xi[index, 2])
+        #self.irr_jump_u_nn[index] = self.jump_u_nn(x, y, z, self.interface.irr_Xi[index, 0], self.interface.irr_Xi[index, 1], self.interface.irr_Xi[index, 2])
         return
 
     """ All jump conditions on one point are computed.
@@ -292,15 +293,15 @@ class helmholtz_scc_aug0(object):
 
     def jump_u_nn(self, x, y, z, n_x, n_y, n_z):
         # For error checking purpose.
-        u_xx = -np.cos(x) * np.sin(y) * np.sin(z)
-        u_xy = -np.sin(x) * np.cos(y) * np.sin(z)
-        u_xz = -np.sin(x) * np.sin(y) * np.cos(z)
+        u_xx = np.cos(x) * np.sin(y) * np.sin(z)
+        u_xy = np.sin(x) * np.cos(y) * np.sin(z)
+        u_xz = np.sin(x) * np.sin(y) * np.cos(z)
         u_yx = np.sin(x) * np.cos(y) * np.sin(z)
         u_yy = -np.cos(x) * np.sin(y) * np.sin(z)
-        u_yz = np.cos(x) * np.cos(y) * np.cos(z)
-        u_zx = -np.sin(x) * np.sin(y) * np.cos(z)
-        u_zy = np.cos(x) * np.cos(y) * np.cos(z)
-        u_zz = -np.cos(x) * np.sin(y) * np.sin(z)
+        u_yz = -np.cos(x) * np.cos(y) * np.cos(z)
+        u_zx = np.sin(x) * np.sin(y) * np.cos(z)
+        u_zy = -np.cos(x) * np.cos(y) * np.cos(z)
+        u_zz = np.cos(x) * np.sin(y) * np.sin(z)
 
         return n_x * (u_xx * n_x + u_xy * n_y + u_xz * n_z) \
         +      n_y * (u_yx * n_x + u_yy * n_y + u_yz * n_z) \

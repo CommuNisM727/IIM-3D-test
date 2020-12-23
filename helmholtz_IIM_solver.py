@@ -196,7 +196,7 @@ class helmholtz_IIM_solver(object):
         print("MAX ERROR:", self.error)
 
 """ MODULE TEST
-mesh = mesh_uniform(multiplier=1)
+mesh = mesh_uniform(multiplier=2)
 inte = interface_ellipsoid(0.6, 0.5, np.sqrt(2.0)/4.0, mesh)
 a = helmholtz_scc(inte, mesh, lambda_c=-5)
 scc = helmholtz_IIM_solver(a)

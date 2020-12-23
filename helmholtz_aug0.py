@@ -18,12 +18,12 @@ from matplotlib import cm
 ### NOTED:          Might be split into multiple modules.
 ###-----------------------------------------------------------------------------------
 
-mesh = mesh_uniform(multiplier=2)
+mesh = mesh_uniform(multiplier=1)
 inte = interface_ellipsoid(0.6, 0.5, np.sqrt(2.0)/4.0, mesh)
 
 
 jump_u_n = np.zeros(shape=(inte.n_irr, 1), dtype=np.float64)
-a = helmholtz_scc_aug0(inte, mesh, jump_u_n, lambda_c=5)
+a = helmholtz_scc_aug0(inte, mesh, jump_u_n, lambda_c=-5)
 a.set_jump_u_n(a.irr_jump_u_nT[1:])
 
 
