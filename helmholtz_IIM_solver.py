@@ -42,9 +42,13 @@ class helmholtz_IIM_solver(object):
         """
 
         self.pde = pde
-        
-        self.rhs_corr = np.zeros(shape=(self.pde.interface.n_irr + 1, ), dtype=np.float64)
-        self.irr_corr = np.zeros(shape=(self.pde.interface.n_irr + 1, ), dtype=np.float64)
+        n_irr = self.pde.interface.n_irr
+        if(hasattr(pde.interface, 'n_app')):
+            n_irr = n_irr + pde.interface.n_app
+            print('AUGMENTED POINT: ', pde.interface.n_app)
+
+        self.rhs_corr = np.zeros(shape=(n_irr + 1, ), dtype=np.float64)
+        self.irr_corr = np.zeros(shape=(n_irr + 1, ), dtype=np.float64)
         self.u = np.asfortranarray(np.zeros(shape=(self.pde.mesh.n_x + 1, self.pde.mesh.n_y + 1, self.pde.mesh.n_z + 1), dtype=np.float64, order='F'))
         self.error = 0.0
 
@@ -52,7 +56,7 @@ class helmholtz_IIM_solver(object):
         for i in range(1, self.pde.mesh.n_x):
             for j in range(1, self.pde.mesh.n_y):
                 for k in range(1, self.pde.mesh.n_z):
-                    if (self.pde.interface.irr[i, j, k] > 0):
+                    if (self.pde.interface.irr[i, j, k] != 0):
                         index = self.pde.interface.irr[i, j, k]
                         self.__irregular_projection_corr(index, i, j, k)
 
@@ -76,12 +80,19 @@ class helmholtz_IIM_solver(object):
 
         """
 
-        d = self.pde.interface.irr_dist[index]
-        corr = self.pde.irr_jump_u[index]   \
-        + d * self.pde.irr_jump_u_n[index]  \
-        + 0.5*d*d * self.pde.irr_jump_u_nn[index]
+        abs_index = np.abs(index)
+        d = self.pde.interface.irr_dist[abs_index]
+        corr = self.pde.irr_jump_u[abs_index]   \
+        + d * self.pde.irr_jump_u_n[abs_index]  \
+        + 0.5*d*d * self.pde.irr_jump_u_nn[abs_index]
 
-        self.irr_corr[index] = corr
+        self.irr_corr[abs_index] = corr
+        if (index < 0):
+            corr = self.pde.irr_jump_u[abs_index]   \
+            + d * self.pde.irr_jump_u_n[abs_index]
+            
+            print(index, corr)
+            return
 
         # x-.
         if (self.pde.interface.phi[i, j, k] <= 0 and self.pde.interface.phi[i - 1, j, k] > 0):

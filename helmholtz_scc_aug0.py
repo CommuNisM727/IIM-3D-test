@@ -34,7 +34,7 @@ class helmholtz_scc_aug0(object):
 
     """
 
-    def __init__(self, interface, mesh, jump_u_n, lambda_c=1):
+    def __init__(self, interface, mesh, lambda_c=1):
         """ Initialization of class 'helmholtz_scc_aug0'
             'u_exact' and 'f_exact' are computed.
 
@@ -57,11 +57,13 @@ class helmholtz_scc_aug0(object):
         self.interface = interface
         self.lambda_c = lambda_c
 
-        self.irr_jump_u = np.ndarray(shape=(interface.n_irr + 1, ), dtype=np.float64)
-        self.irr_jump_f = np.ndarray(shape=(interface.n_irr + 1, ), dtype=np.float64)
-        self.irr_jump_u_n = np.ndarray(shape=(interface.n_irr + 1, ), dtype=np.float64)
-        self.irr_jump_u_nT = np.ndarray(shape=(interface.n_irr + 1, ), dtype=np.float64)
-        self.irr_jump_u_nn = np.ndarray(shape=(interface.n_irr + 1, ), dtype=np.float64)
+        self.irr_jump_u = np.ndarray(shape=(interface.n_irr + interface.n_app + 1, ), dtype=np.float64)
+        self.irr_jump_f = np.ndarray(shape=(interface.n_irr + interface.n_app + 1, ), dtype=np.float64)
+        self.irr_jump_u_n = np.ndarray(shape=(interface.n_irr + interface.n_app + 1, ), dtype=np.float64)
+        self.irr_jump_u_nT = np.ndarray(shape=(interface.n_irr + interface.n_app + 1, ), dtype=np.float64)
+        self.irr_jump_u_nn = np.ndarray(shape=(interface.n_irr + interface.n_app + 1, ), dtype=np.float64)
+        
+        self.irr_jump_u_B = np.ndarray(shape=(interface.n_irr + interface.n_app, 1), dtype=np.float64)
 
         for i in range(mesh.n_x + 1):
             for j in range(mesh.n_y + 1):
@@ -69,16 +71,14 @@ class helmholtz_scc_aug0(object):
                     self.u_exact[i, j, k] = self.__u_exact(i, j, k)
                     self.f_exact[i, j, k] = self.__f_exact(i, j, k)
 
-                    if (self.interface.irr[i, j, k] > 0):
+                    if (self.interface.irr[i, j, k] != 0):
                         self.__irregular_projection_jump1(self.interface.irr[i, j, k])
 
-        self.set_jump_u_n(jump_u_n)
-        
         return
 
     def set_jump_u_n(self, jump_u_n):
         #self.irr_jump_u_n[0] = 0
-        for i in range(1, self.interface.n_irr + 1):
+        for i in range(1, self.interface.n_irr + self.interface.n_app + 1):
             self.irr_jump_u_n[i] = jump_u_n[i - 1]
             #self.irr_jump_u_n[i] = self.irr_jump_u_nT[i]
             pass
@@ -91,50 +91,29 @@ class helmholtz_scc_aug0(object):
         
 
     def get_jump_u_b(self, u_corr):
-        jump_u_b = np.zeros(shape=(self.interface.n_irr + 1, 1), dtype=np.float64)
+        jump_u_b = np.zeros(shape=(self.interface.n_irr + self.interface.n_app, 1), dtype=np.float64)
 
         for i in range(self.mesh.n_x + 1):
             for j in range(self.mesh.n_y + 1):
                 for k in range(self.mesh.n_z + 1):
-                    if (self.interface.irr[i, j, k] > 0):
-                        index = self.interface.irr[i, j, k]
+                    if (self.interface.irr[i, j, k] != 0):
+                        index = np.abs(self.interface.irr[i, j, k])
                         x = self.interface.irr_proj[index, 0]
                         y = self.interface.irr_proj[index, 1]
                         z = self.interface.irr_proj[index, 2]
 
-                        i = int((x - self.mesh.x_inf) / self.mesh.h_x)
-                        j = int((y - self.mesh.y_inf) / self.mesh.h_y)
-                        k = int((z - self.mesh.z_inf) / self.mesh.h_z)
+                        i0 = int((x - self.mesh.x_inf) / self.mesh.h_x)
+                        j0 = int((y - self.mesh.y_inf) / self.mesh.h_y)
+                        k0 = int((z - self.mesh.z_inf) / self.mesh.h_z)
 
                         Pn_interp_3d_partial = lambda arr, n: Pn_interp_3d(x, y, z, 
                                                 self.mesh.xs, self.mesh.ys, self.mesh.zs,
-                                                i - int((n - 1) / 2), j - int((n - 1) / 2), k - int((n - 1) / 2),
+                                                i0 - int((n - 1) / 2), j0 - int((n - 1) / 2), k0 - int((n - 1) / 2),
                                                 arr, n)
                         # Tricubic interpolating (4^3 points).
+                        #jump_u_b[index - 1] = -self.jump_u(x, y, z)
                         jump_u_b[index - 1] = Pn_interp_3d_partial(u_corr, 2)
-
-                        pass
-
-        return
-
-    """ 'u_exact' and 'f_exact' on one point are computed.
-
-    Args:
-        i, j, k     (integer):      A Triplet indicating the point (x_i, y_j, z_k).
-
-    Returns:
-        u(x_i, y_j, z_k) = cos(x_i)*sin(y_j)*sin(z_k) if outsides the interface, 0 otherwise.  
-        f(x_i, y_j, z_k) = (\lambda_c - 3)*cos(x_i)*sin(y_j)*sin(z_k) if outsides the interface, 0 otherwise.
-    """
-    def __u_exact(self, i, j, k):
-        if (self.interface.phi[i, j, k] <= 0):
-            return np.cos(self.mesh.xs[i]) * np.sin(self.mesh.ys[j]) * np.sin(self.mesh.zs[k])
-        return 0.0
-
-    def __f_exact(self, i, j, k): 
-        if (self.interface.phi[i, j, k] <= 0):
-            return (self.lambda_c - 3.0) * np.cos(self.mesh.xs[i]) * np.sin(self.mesh.ys[j]) * np.sin(self.mesh.zs[k])
-        return 0.0
+        return jump_u_b
     
     def __irregular_projection_jump1(self, index):
         """ A module for computing and saving the basic information of irregular point projection on the interface.
@@ -146,6 +125,7 @@ class helmholtz_scc_aug0(object):
             None
 
         """
+        index = np.abs(index)
 
         x = self.interface.irr_proj[index, 0]
         y = self.interface.irr_proj[index, 1]
@@ -158,6 +138,7 @@ class helmholtz_scc_aug0(object):
         +   self.jump_u_y(x, y, z) * self.interface.irr_Xi[index, 1] \
         +   self.jump_u_z(x, y, z) * self.interface.irr_Xi[index, 2]
         #self.irr_jump_u_n[index] = self.irr_jump_u_nT[index]
+        self.irr_jump_u_B[index - 1] = -self.irr_jump_u[index]
         return
 
     def __irregular_projection_jump2(self, index, i, j, k, norm_l1=3, norm_l2=2.4, n_points=16):
@@ -262,6 +243,27 @@ class helmholtz_scc_aug0(object):
         - (derivs[3] + derivs[5])
         #self.irr_jump_u_nn[index] = self.jump_u_nn(x, y, z, self.interface.irr_Xi[index, 0], self.interface.irr_Xi[index, 1], self.interface.irr_Xi[index, 2])
         return
+
+    
+    """ 'u_exact' and 'f_exact' on one point are computed.
+
+    Args:
+        i, j, k     (integer):      A Triplet indicating the point (x_i, y_j, z_k).
+
+    Returns:
+        u(x_i, y_j, z_k) = cos(x_i)*sin(y_j)*sin(z_k) if outsides the interface, 0 otherwise.  
+        f(x_i, y_j, z_k) = (\lambda_c - 3)*cos(x_i)*sin(y_j)*sin(z_k) if outsides the interface, 0 otherwise.
+    """
+    def __u_exact(self, i, j, k):
+        if (self.interface.phi[i, j, k] <= 0):
+            return np.cos(self.mesh.xs[i]) * np.sin(self.mesh.ys[j]) * np.sin(self.mesh.zs[k])
+        return 0.0
+
+    def __f_exact(self, i, j, k): 
+        if (self.interface.phi[i, j, k] <= 0):
+            return (self.lambda_c - 3.0) * np.cos(self.mesh.xs[i]) * np.sin(self.mesh.ys[j]) * np.sin(self.mesh.zs[k])
+        return 0.0
+
 
     """ All jump conditions on one point are computed.
 

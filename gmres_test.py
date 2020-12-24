@@ -116,7 +116,7 @@ class gmres(object):
         #    self.k = self.max_iter
         return self.x, self.r, self.q
 
-#"""
+"""
 A = np.matrix('1 1; 0 1') # (-1, 4)
 b = np.array([3, 4]).reshape(-1, 1)
 x = np.array([0, 0]).reshape(-1, 1)
@@ -139,7 +139,7 @@ for i in range(15):
 
     input()
     #print(x)
-#"""
+"""
 
 ### MODIFY HISTORY---
 ### 21.12.2020      FILE CREATED.           ---727
