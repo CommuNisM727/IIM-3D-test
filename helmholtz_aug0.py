@@ -65,14 +65,14 @@ class gmres(object):
         #    self.k = self.max_iter
         return self.x, self.r, self.q
 
-mesh = mesh_uniform(multiplier=1)
+mesh = mesh_uniform(multiplier=2)
 inte = interface_ellipsoid_aug(0.6, 0.5, np.sqrt(2.0)/4.0, mesh)
 
 
 pde = helmholtz_scc_aug0(inte, mesh, lambda_c=-5)
-pde.set_jump_u_n(pde.irr_jump_u_nT[1:])
+#pde.set_jump_u_n(pde.irr_jump_u_nT[1:])
 
-#"""
+"""
 solu = helmholtz_IIM_solver(pde)
 u = solu.u
 c = solu.irr_corr
@@ -82,13 +82,12 @@ for i in range(mesh.n_x + 1):
         for k in range(mesh.n_z + 1):
             if (inte.phi[i, j, k] > 0):
                 # 2 Types.
-                if (inte.irr[i, j, k] > 0):
-            #u[i, j, k] = pde.u_exact[i, j, k]
-                    u[i, j, k] = u[i, j, k] - c[inte.irr[i, j, k]] #+-
-                if (inte.irr[i, j, k] < 0):
-                    #print(inte.irr[i, j, k], c[np.abs(inte.irr[i, j, k])])
-                    #u[i, j, k] = u[i, j, k] - c[np.abs(inte.irr[i, j, k])] #+-
-                    pass
+                if (inte.irr[i, j, k] != 0):
+                    u[i, j, k] = u[i, j, k] - c[np.abs(inte.irr[i, j, k])] #+-
+                #if (inte.irr[i, j, k] > 0):
+                #    u[i, j, k] = u[i, j, k] - c[inte.irr[i, j, k]] #+-
+                #if (inte.irr[i, j, k] < 0):
+                #    u[i, j, k] = u[i, j, k] - c[np.abs(inte.irr[i, j, k])] #+-
 
 b_GT = pde.irr_jump_u_B
 b_IP = pde.get_jump_u_b(u)
@@ -100,9 +99,8 @@ for i in range(mesh.n_x + 1):
             if (inte.irr[i, j, k] > 0):
                 err = b_GT[inte.irr[i, j, k] - 1] - b_IP[inte.irr[i, j, k] - 1]
                 if (np.abs(err) > 1e-3):
-                    print("ERR: ", err, "SIGN: ", inte.phi[i, j, k])
-
-print('dis: ', mesh.h_x)
+                    #print("ERR: ", err, "SIGN: ", inte.phi[i, j, k])
+                    pass
 
 #plt.plot(b_GT)
 plt.plot(b_IP-b_GT)
@@ -112,9 +110,9 @@ plt.plot(b_IP-b_GT)
 print(np.max(np.abs(b_GT - b_IP)))
 
 plt.show()
-#"""
-
 """
+
+#"""
 def A(q):
     pde.set_jump_u_n(q)
 
@@ -125,13 +123,14 @@ def A(q):
     for i in range(mesh.n_x + 1):
         for j in range(mesh.n_y + 1):
             for k in range(mesh.n_z + 1):
-                if (inte.irr[i, j, k] > 0 and inte.phi[i, j, k] > 0):
-                    u[i, j, k] = u[i, j, k] - c[inte.irr[i, j, k]] #+-
+                if (inte.irr[i, j, k] != 0 and inte.phi[i, j, k] > 0):
+                    u[i, j, k] = u[i, j, k] - c[np.abs(inte.irr[i, j, k])] #+-
     return pde.get_jump_u_b(u)
     
 
 b = pde.irr_jump_u_B
-x = np.zeros(shape=(inte.n_irr, 1), dtype=np.float64)
+x = np.zeros(shape=(inte.n_irr + inte.n_app, 1), dtype=np.float64)
+#x = pde.irr_jump_u_nT[1:]
 
 r = b - A(x)
 
@@ -152,7 +151,7 @@ for i in range(300):
 
     #input()
     #print(x)
-"""
+#"""
 
 
 

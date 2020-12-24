@@ -582,6 +582,7 @@ class interface_ellipsoid_aug(object):
         self.mesh = mesh
         self.phi = np.zeros((mesh.n_x + 1, mesh.n_y + 1, mesh.n_z + 1), dtype=np.float64)
         self.irr = np.zeros((mesh.n_x + 1, mesh.n_y + 1, mesh.n_z + 1), dtype=np.int)
+        self.vis = np.zeros((mesh.n_x + 1, mesh.n_y + 1, mesh.n_z + 1), dtype=np.int)
 
         self.phi_x = np.zeros((mesh.n_x + 1, mesh.n_y + 1, mesh.n_z + 1), dtype=np.float64)
         self.phi_y = np.zeros((mesh.n_x + 1, mesh.n_y + 1, mesh.n_z + 1), dtype=np.float64)
@@ -633,6 +634,7 @@ class interface_ellipsoid_aug(object):
                     if (self.irr[i, j, k] == 1):
                         self.n_irr = self.n_irr + 1
                         self.irr[i, j, k] = self.n_irr
+                        self.vis[i, j, k] = 1
 
                     # Derivatives of \phi.
                     self.phi_x[i, j, k] = self.__phi_x(i, j, k, mesh.h_x)
@@ -652,42 +654,55 @@ class interface_ellipsoid_aug(object):
                     self.phi_zz[i, j, k] = self.__phi_zz(i, j, k, mesh.h_z)
 
         # Irregular projections.
-        self.irr_proj = np.ndarray(shape=(2 * self.n_irr + 1, 3), dtype=np.float64)
-        self.irr_dist = np.ndarray(shape=(2 * self.n_irr + 1, ), dtype=np.float64)
-        self.irr_Xi = np.ndarray(shape=(2 * self.n_irr + 1, 3), dtype=np.float64)
-        self.irr_Eta = np.ndarray(shape=(2 * self.n_irr + 1, 3), dtype=np.float64)
-        self.irr_Tau = np.ndarray(shape=(2 * self.n_irr + 1, 3), dtype=np.float64)
-        self.irr_Kappa = np.ndarray(shape=(2 * self.n_irr + 1, ), dtype=np.float64)
+        n_ttl = 3
+        self.irr_proj = np.ndarray(shape=(n_ttl * self.n_irr + 1, 3), dtype=np.float64)
+        self.irr_dist = np.ndarray(shape=(n_ttl * self.n_irr + 1, ), dtype=np.float64)
+        self.irr_Xi = np.ndarray(shape=(n_ttl * self.n_irr + 1, 3), dtype=np.float64)
+        self.irr_Eta = np.ndarray(shape=(n_ttl * self.n_irr + 1, 3), dtype=np.float64)
+        self.irr_Tau = np.ndarray(shape=(n_ttl * self.n_irr + 1, 3), dtype=np.float64)
+        self.irr_Kappa = np.ndarray(shape=(n_ttl * self.n_irr + 1, ), dtype=np.float64)
 
         # STEP 3:   Find the irregular projections and interface information.
         self.__irregular_projection()
         
-        tmp = self.n_irr
-        for i in range(mesh.n_x + 1):
-            for j in range(mesh.n_y + 1):
-                for k in range(mesh.n_z + 1):
-                    if (self.irr[i, j, k] > 0):
-                        index = self.irr[i, j, k]
-                        x = self.irr_proj[index, 0]
-                        y = self.irr_proj[index, 1]
-                        z = self.irr_proj[index, 2]
-                        i0 = int((x - self.mesh.x_inf) / self.mesh.h_x)
-                        j0 = int((y - self.mesh.y_inf) / self.mesh.h_y)
-                        k0 = int((z - self.mesh.z_inf) / self.mesh.h_z)
-                        
-                        for i1 in range(2):
-                            for j1 in range(2):
-                                for k1 in range(2):
-                                    if (self.irr[i0+i1, j0+j1, k0+k1] == 0 and self.phi[i0+i1, j0+j1, k0+k1] > 0):
-                                        self.n_irr = self.n_irr + 1
-                                        self.irr[i0+i1, j0+j1, k0+k1] = -self.n_irr
+        tmp_irr = self.n_irr
+        
+        self.n_app = 0
+        while(True):
+            tmp_app = 0
+            for i in range(mesh.n_x + 1):
+                for j in range(mesh.n_y + 1):
+                    for k in range(mesh.n_z + 1):
+                        if (self.irr[i, j, k] != 0):
+                            index = self.irr[i, j, k]
+                            x = self.irr_proj[index, 0]
+                            y = self.irr_proj[index, 1]
+                            z = self.irr_proj[index, 2]
+                            i0 = int((x - self.mesh.x_inf) / self.mesh.h_x)
+                            j0 = int((y - self.mesh.y_inf) / self.mesh.h_y)
+                            k0 = int((z - self.mesh.z_inf) / self.mesh.h_z)
+                            
+                            for i1 in range(2):
+                                for j1 in range(2):
+                                    for k1 in range(2):
+                                        if (self.vis[i0+i1, j0+j1, k0+k1] == 0 and self.phi[i0+i1, j0+j1, k0+k1] > 0):
+                                            self.n_irr = self.n_irr + 1
+                                            self.irr[i0+i1, j0+j1, k0+k1] = -self.n_irr
 
-        self.__irregular_projection(-1)
-        self.n_app = self.n_irr - tmp
-        self.n_irr = tmp
+                                            tmp_app = tmp_app + 1
+                                            self.vis[i0+i1, j0+j1, k0+k1] = 1
+            
+            if (tmp_app == 0):
+                break
+
+            print('APPENDED: ', tmp_app)
+            self.__irregular_projection(self.n_irr - tmp_app)
+        
+        self.n_app = self.n_irr - tmp_irr
+        self.n_irr = tmp_irr
         print('irr: ', self.n_irr, 'app: ', self.n_app)
 
-    def __irregular_projection(self, sign=1):
+    def __irregular_projection(self, start=0):
         """ The projections onto the interface of each irregular points are found here.
         Computation:
             1. Projections 'irr_proj' and distances 'irr_dist' are obtained in 2 steps:
@@ -710,8 +725,8 @@ class interface_ellipsoid_aug(object):
         for i in range(1, self.mesh.n_x):
             for j in range(1, self.mesh.n_y):
                 for k in range(1, self.mesh.n_z):
-                    if (sign * self.irr[i, j, k] > 0):
-                        index = sign * self.irr[i, j, k]
+                    index = np.abs(self.irr[i, j, k])
+                    if (index > start):
                         # (1). Initialize the projection.
                         [alpha, x_0, y_0, z_0] = self.__irregular_projection_initial(i, j, k)
                         # (2). Apply several Newton iterations to obtain the final projection.

@@ -45,7 +45,7 @@ class helmholtz_IIM_solver(object):
         n_irr = self.pde.interface.n_irr
         if(hasattr(pde.interface, 'n_app')):
             n_irr = n_irr + pde.interface.n_app
-            print('AUGMENTED POINT: ', pde.interface.n_app)
+            print('AUGMENTED SOLVER.')
 
         self.rhs_corr = np.zeros(shape=(n_irr + 1, ), dtype=np.float64)
         self.irr_corr = np.zeros(shape=(n_irr + 1, ), dtype=np.float64)
@@ -87,12 +87,6 @@ class helmholtz_IIM_solver(object):
         + 0.5*d*d * self.pde.irr_jump_u_nn[abs_index]
 
         self.irr_corr[abs_index] = corr
-        if (index < 0):
-            corr = self.pde.irr_jump_u[abs_index]   \
-            + d * self.pde.irr_jump_u_n[abs_index]
-            
-            print(index, corr)
-            return
 
         # x-.
         if (self.pde.interface.phi[i, j, k] <= 0 and self.pde.interface.phi[i - 1, j, k] > 0):

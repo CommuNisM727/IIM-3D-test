@@ -86,7 +86,7 @@ class helmholtz_scc_aug0(object):
         for i in range(self.mesh.n_x + 1):
             for j in range(self.mesh.n_y + 1):
                 for k in range(self.mesh.n_z + 1):
-                    if (self.interface.irr[i, j, k] > 0):
+                    if (self.interface.irr[i, j, k] != 0):
                         self.__irregular_projection_jump2(self.interface.irr[i, j, k], i, j, k)
         
 
@@ -157,6 +157,7 @@ class helmholtz_scc_aug0(object):
             [u_{nn}] are assigned here. ([u_{nn}] = [f_n] - \Kappa [u_n] - [u_{surface Laplacian}])
 
         """
+        index = np.abs(index)
 
         x = self.interface.irr_proj[index, 0]
         y = self.interface.irr_proj[index, 1]
